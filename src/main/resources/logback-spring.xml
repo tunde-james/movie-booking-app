@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss} %highlight(%-5level) %cyan(%logger{36}) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ============================================================ -->
+    <!-- SPRING FRAMEWORK                                              -->
+    <!-- ============================================================ -->
+
+    <!-- Core Spring - WARN hides repetitive internal wiring noise -->
+    <logger name="org.springframework" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Boot startup - INFO so you see what got auto-configured -->
+    <logger name="org.springframework.boot" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Boot actuator - WARN, mostly noise unless debugging health -->
+    <logger name="org.springframework.boot.actuate" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Web layer - INFO so you see request mapping registrations -->
+    <logger name="org.springframework.web" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Security - INFO so you see filter chain and auth events -->
+    <logger name="org.springframework.security" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Transaction management - WARN, too verbose at INFO -->
+    <logger name="org.springframework.transaction" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Data/JPA context - INFO so you see repository bootstrapping -->
+    <logger name="org.springframework.data" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- ============================================================ -->
+    <!-- HIBERNATE / JPA                                               -->
+    <!-- ============================================================ -->
+
+    <!-- Core Hibernate - WARN, extremely noisy at INFO -->
+    <logger name="org.hibernate" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Hibernate bootstrap - INFO so you see entity scanning -->
+    <logger name="org.hibernate.orm.connections" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- SQL queries - leave DEBUG commented out in production,
+         uncomment only when debugging data issues locally -->
+    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- SQL bind parameters - only enable alongside SQL above -->
+    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- ============================================================ -->
+    <!-- TOMCAT                                                        -->
+    <!-- ============================================================ -->
+
+    <!-- Tomcat internals - WARN, nothing useful at INFO -->
+    <logger name="org.apache.tomcat" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Catalina lifecycle - INFO so you see server start/stop -->
+    <logger name="org.apache.catalina" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Coyote connector - WARN, too low level -->
+    <logger name="org.apache.coyote" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- ============================================================ -->
+    <!-- CONNECTION POOL                                               -->
+    <!-- ============================================================ -->
+
+    <!-- HikariCP - INFO so you see pool creation and sizing -->
+    <logger name="com.zaxxer.hikari" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- HikariCP pool internals - WARN, noisy -->
+    <logger name="com.zaxxer.hikari.pool" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- ============================================================ -->
+    <!-- YOUR APPLICATION                                              -->
+    <!-- ============================================================ -->
+
+    <!-- DEBUG means you see everything you log in your own code -->
+    <logger name="com.example" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- ============================================================ -->
+    <!-- ROOT                                                          -->
+    <!-- ============================================================ -->
+
+    <!-- Catches any library not explicitly configured above -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
