@@ -9,30 +9,33 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.SQLRestriction;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "cinemas")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Cinema extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 150)
     private String name;
 
-    @Column(nullable = false)
-    private String location;
+    @Column(nullable = false, length = 255)
+    private String address;
 
     @Column(nullable = false)
     private Integer capacity;
 
     @Column(name = "screens_type")
-    private Integer screenType;
+    private String screenType;
 
-    @Column(name = "total_screens")
+    @Column(name = "total_screens", nullable = false)
     private Integer totalScreens;
 
     @OneToMany(mappedBy = "cinema", fetch = FetchType.LAZY)

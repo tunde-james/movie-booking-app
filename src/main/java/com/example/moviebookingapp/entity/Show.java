@@ -14,6 +14,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Min;
+
+import org.hibernate.annotations.SQLRestriction;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +26,7 @@ import com.example.moviebookingapp.enums.ShowStatus;
 
 @Entity
 @Table(name = "shows")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,18 +43,19 @@ public class Show extends BaseEntity {
     @Column(name = "show_time", nullable = false)
     private LocalDateTime showTime;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ShowStatus status;
+
     @Column(name = "total_seats", nullable = false)
     private Integer totalSeats;
 
     @Column(name = "available_seats", nullable = false)
+    @Min(value = 0, message = "Available seats cannot be negative")
     private Integer availableSeats;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ShowStatus status;
 
     @OneToMany(mappedBy = "show", fetch = FetchType.LAZY)
     private List<Booking> bookings = new ArrayList<>();

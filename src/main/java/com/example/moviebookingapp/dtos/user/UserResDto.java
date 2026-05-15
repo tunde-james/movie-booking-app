@@ -1,8 +1,9 @@
 package com.example.moviebookingapp.dtos.user;
 
-import java.util.Set;
+import com.example.moviebookingapp.enums.UserRole;
 
-public record UserResDto(Long id, String name, String email, String phoneNumber,
-    Set<String> roles) {
+public record UserResDto(
+
+    Long id, String username, String email, String phoneNumber, UserRole role) {
 
 }

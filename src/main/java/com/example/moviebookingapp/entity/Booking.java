@@ -11,6 +11,9 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.DecimalMin;
+
+import org.hibernate.annotations.SQLRestriction;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,10 +23,11 @@ import com.example.moviebookingapp.enums.BookingStatus;
 
 @Entity
 @Table(name = "bookings")
+@SQLRestriction("deleted =false")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Booking {
+public class Booking extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -37,12 +41,13 @@ public class Booking {
     private Integer numberOfSeats;
 
     @Column(name = "total_price", precision = 10, scale = 2)
+    @DecimalMin(value = "0.01", message = "Total price must be greater than 0")
     private BigDecimal totalPrice;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private BookingStatus status;
+    @Column(name = "booking_status", nullable = false)
+    private BookingStatus bookingStatus;
 
-    @Column(name = "booking_time",nullable = false)
+    @Column(name = "booking_time", nullable = false)
     private LocalDateTime bookingTime;
 }

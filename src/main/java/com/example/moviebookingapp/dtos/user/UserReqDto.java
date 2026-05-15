@@ -2,14 +2,17 @@ package com.example.moviebookingapp.dtos.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import com.example.moviebookingapp.enums.UserRole;
+
 public record UserReqDto(
 
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
-    String name,
+    @NotBlank(message = "Username is required")
+    @Size(min = 2, max = 50, message = "Username must be between 2 and 50 characters")
+    String username,
 
     @NotBlank(message = "Email is required")
     @Email(regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
@@ -26,5 +29,8 @@ public record UserReqDto(
     @Pattern(regexp = ".*[a-z].*",
         message = "Password should contain at least 1 lowercase character")
     @Pattern(regexp = ".*\\d.*", message = "Password should contain at least 1 number")
-    String password) {
+    String password,
+
+    @NotNull(message = "Role is required")
+    UserRole role) {
 }
