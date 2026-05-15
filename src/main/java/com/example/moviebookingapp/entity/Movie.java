@@ -12,6 +12,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.SQLRestriction;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,12 +25,13 @@ import com.example.moviebookingapp.enums.MovieStatus;
 
 @Entity
 @Table(name = "movies")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Movie extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     private String title;
 
     @Column(columnDefinition = "TEXT")
@@ -54,8 +57,9 @@ public class Movie extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MovieStatus status;
+    private MovieStatus movieStatus;
 
+    @Column(length = 500)
     private String posterUrl;
 
     @OneToMany(mappedBy = "movie", fetch = FetchType.LAZY)

@@ -3,48 +3,45 @@ package com.example.moviebookingapp.dtos.movie;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.FutureOrPresent;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import com.example.moviebookingapp.enums.Genre;
 import com.example.moviebookingapp.enums.Language;
 import com.example.moviebookingapp.enums.MovieRating;
 import com.example.moviebookingapp.enums.MovieStatus;
 
-@Getter
-@Setter
-@NoArgsConstructor
-public class MovieReqDto {
+public record MovieReqDto(
 
     @NotBlank(message = "Title is required")
-    private String title;
+    @Size(max = 200, message = "Title cannot exceed 200 characters")
+    String title,
 
-    private String description;
+    @Size(max = 1000, message = "Description cannot exceed 1000 characters")
+    String description,
 
     @NotNull(message = "Genre is required")
-    private Genre genre;
+    Genre genre,
 
     @NotNull(message = "Duration is required")
-    @Min(value = 1, message = "Duration must be at least 1 minute")
-    private Integer durationInMinutes;
+    @Positive(message = "Duration must be positive")
+    Integer durationInMinutes,
 
     @NotNull(message = "Release date is required")
     @FutureOrPresent(message = "Release date cannot be in the past")
-    private LocalDate releaseDate;
+    LocalDate releaseDate,
 
     @NotNull(message = "Language is required")
-    private Language language;
+    Language language,
 
     @NotNull(message = "Rating is required")
-    private MovieRating rating;
+    MovieRating rating,
 
     @NotNull(message = "Status is required")
-    private MovieStatus status;
+    MovieStatus movieStatus,
 
-    private String posterUrl;
+    @Size(max = 500, message = "Poster URL cannot exceed 500 characters")
+    String posterUrl) {
 }
