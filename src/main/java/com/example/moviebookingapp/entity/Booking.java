@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.annotations.SQLRestriction;
 
@@ -40,12 +41,13 @@ public class Booking extends BaseEntity {
     @Column(name = "number_of_seats", nullable = false)
     private Integer numberOfSeats;
 
-    @Column(name = "total_price", precision = 10, scale = 2)
+    @Column(name = "total_price", precision = 10, scale = 2, nullable = false)
     @DecimalMin(value = "0.01", message = "Total price must be greater than 0")
     private BigDecimal totalPrice;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_status", nullable = false)
+    @NotNull(message = "Total price is required")
     private BookingStatus bookingStatus;
 
     @Column(name = "booking_time", nullable = false)

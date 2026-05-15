@@ -19,7 +19,7 @@ public record MovieReqDto(
     @Size(max = 200, message = "Title cannot exceed 200 characters")
     String title,
 
-    @Size(max = 2000, message = "Description cannot exceed 1000 characters")
+    @Size(max = 1000, message = "Description cannot exceed 1000 characters")
     String description,
 
     @NotNull(message = "Genre is required")
