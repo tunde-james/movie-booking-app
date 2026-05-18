@@ -7,10 +7,14 @@ import com.example.moviebookingapp.enums.Language;
 import com.example.moviebookingapp.enums.MovieRating;
 import com.example.moviebookingapp.enums.MovieStatus;
 
-
 public record MovieResDto(
-
-    Long id, String title, String description, Genre genre, Integer durationInMinutes,
-    LocalDate releaseDate, Language language, MovieRating rating, MovieStatus movieStatus,
-    String posterUrl) {
-}
+        Long id,
+        String title,
+        String description,
+        Genre genre,
+        Integer durationInMinutes,
+        LocalDate releaseDate,
+        Language language,
+        MovieRating rating,
+        MovieStatus movieStatus,
+        String posterUrl) {}

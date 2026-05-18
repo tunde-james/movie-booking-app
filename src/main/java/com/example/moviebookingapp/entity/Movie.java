@@ -11,6 +11,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.SQLRestriction;
 
@@ -24,7 +25,12 @@ import com.example.moviebookingapp.enums.MovieRating;
 import com.example.moviebookingapp.enums.MovieStatus;
 
 @Entity
-@Table(name = "movies")
+@Table(
+        name = "movies",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_movies_title_release_date_language_deleted",
+                        columnNames = {"title", "release_date", "language", "deleted"}))
 @SQLRestriction("deleted = false")
 @Getter
 @Setter

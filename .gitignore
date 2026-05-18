@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local agent scratch/workspace files
+.agent/
+.agents/
+.codex/
+.claude/
+.cursor/
+.scratch/
+tmp-agent/
+agent-output/
