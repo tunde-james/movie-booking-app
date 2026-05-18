@@ -1,6 +1,7 @@
 package com.example.moviebookingapp.exception;
 
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -24,7 +25,8 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex, HttpServletRequest request) {
 
         List<FieldErrorDetail> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> new FieldErrorDetail(error.getField(), error.getDefaultMessage()))
+                .map(error -> new FieldErrorDetail(
+                        error.getField(), Objects.requireNonNullElse(error.getDefaultMessage(), "Invalid value")))
                 .toList();
 
         ProblemDetail problemDetail = ApiProblemDetails.validationError(request.getRequestURI(), errors);

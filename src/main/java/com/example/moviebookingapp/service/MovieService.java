@@ -1,5 +1,6 @@
 package com.example.moviebookingapp.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +26,20 @@ public class MovieService {
     public MovieResDto addMovie(MovieReqDto reqDto) {
 
         if (movieRespository.existsByTitle(reqDto.title())) {
-            throw new MovieAlreadyExistsException("A book with this title already exists: " + reqDto.title());
+            throw new MovieAlreadyExistsException(
+                    "A movie with the same title, release date, and language already exists: " + reqDto.title());
         }
 
-        Movie newlyAddedMovie = movieRespository.save(movieMapper.toEntity(reqDto));
+        Movie movie = movieMapper.toEntity(reqDto);
 
-        return movieMapper.toDto(newlyAddedMovie);
+        try {
+            Movie savedMovie = movieRespository.save(movie);
+            return movieMapper.toDto(savedMovie);
+        } catch (DataIntegrityViolationException ex) {
+            throw new MovieAlreadyExistsException(
+                    "A movie with the same title, release date, and language already exists.");
+        }
+
     }
 
     @Transactional

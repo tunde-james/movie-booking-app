@@ -18,7 +18,9 @@ When the developer lacks implementation knowledge, the agent should:
 
 Reusable skills live at:
 
-`C:\Users\tunde\code\personal\ai\springboot-agent-skills\skills`
+`<AGENT_SKILLS_PATH>`
+
+Set `AGENT_SKILLS_PATH` to your local `springboot-agent-skills/skills` directory.
 
 Use these skills when requested:
 - `setup-springboot-agent-skills`

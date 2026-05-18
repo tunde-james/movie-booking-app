@@ -361,10 +361,7 @@ If the app later supports cinemas across multiple time zones, add a `timeZone` f
 
 ## Open Questions
 
-- Should show scheduling prevent overlapping shows in the same auditorium?
-- What error response format should the API use?
-- Should delete operations be soft delete or hard delete?
-- Which test style should be used for the first vertical slice?
 - Should soft-deleted records be restorable by admins?
 - Should uniqueness checks ignore soft-deleted records?
-- What delete operations should be blocked when active child records exist?
+- What should the first authentication implementation use: JWT, session auth, or basic seeded users first?
+- Should show completion be automatic through a scheduled job or manually triggered by admins?
