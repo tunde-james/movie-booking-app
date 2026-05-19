@@ -9,7 +9,9 @@ import com.example.moviebookingapp.dtos.booking.BookingReqDto;
 import com.example.moviebookingapp.dtos.booking.BookingResDto;
 import com.example.moviebookingapp.entity.Booking;
 
-@Mapper(config = BaseMapperConfig.class, uses = { UserMapper.class, ShowMapper.class })
+@Mapper(
+        config = BaseMapperConfig.class,
+        uses = {UserMapper.class, ShowMapper.class})
 public interface BookingMapper {
 
     @Mapping(target = "user", ignore = true)

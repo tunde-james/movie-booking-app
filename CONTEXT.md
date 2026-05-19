@@ -359,6 +359,8 @@ Example show time:
 
 If the app later supports cinemas across multiple time zones, add a `timeZone` field to Cinema.
 
+Database migrations will use Flyway. Hibernate `ddl-auto=update` is temporary during early development and should be replaced before Issue 3.
+
 ## Open Questions
 
 - Should soft-deleted records be restorable by admins?

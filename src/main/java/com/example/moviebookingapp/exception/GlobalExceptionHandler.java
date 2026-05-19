@@ -45,4 +45,14 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
     }
+
+    @ExceptionHandler(MovieNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleMovieNotFoundException(
+            MovieNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "movie-not-found", "Movie not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
 }

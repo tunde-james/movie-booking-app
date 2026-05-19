@@ -6,22 +6,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record CinemaReqDto(
+        @NotBlank(message = "Cinema name is required") String name,
 
-    @NotBlank(message = "Cinema name is required")
-    String name,
+        @NotBlank(message = "Address is required") String address,
 
-    @NotBlank(message = "Address is required")
-    String address,
+        @NotNull(message = "Capacity is required") @Positive(message = "Total capacity must be positive")
+        Integer capacity,
 
-    @NotNull(message = "Capacity is required")
-    @Positive(message = "Total capacity must be positive")
-    Integer capacity,
+        String screenType,
 
-    String screenType,
-
-    @NotNull(message = "Total screens is required")
-    @Positive(message = "Total screens must be positive")
-    @Min(value = 1, message = "Must have at least 1 screen")
-    Integer totalScreens) {
-
-}
+        @NotNull(message = "Total screens is required")
+        @Positive(message = "Total screens must be positive")
+        @Min(value = 1, message = "Must have at least 1 screen")
+        Integer totalScreens) {}
