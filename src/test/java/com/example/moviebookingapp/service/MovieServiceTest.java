@@ -174,6 +174,51 @@ class MovieServiceTest {
     }
 
     @Test
+    void addMovieTrimsTitleBeforeCheckingDuplicatesAndSaving() {
+        MovieReqDto request = new MovieReqDto(
+                "  Gladiator  ",
+                "A historical action drama.",
+                Genre.ACTION,
+                155,
+                LocalDate.of(2026, 6, 1),
+                Language.ENGLISH,
+                MovieRating.PG_13,
+                MovieStatus.COMING_SOON,
+                "https://example.com/gladiator.jpg");
+
+        MovieReqDto normalizedRequest = new MovieReqDto(
+                "Gladiator",
+                "A historical action drama.",
+                Genre.ACTION,
+                155,
+                LocalDate.of(2026, 6, 1),
+                Language.ENGLISH,
+                MovieRating.PG_13,
+                MovieStatus.COMING_SOON,
+                "https://example.com/gladiator.jpg");
+
+        Movie movieToSave = movieWithStatus("Gladiator", MovieStatus.COMING_SOON);
+        Movie savedMovie = movieWithStatus("Gladiator", MovieStatus.COMING_SOON);
+        MovieResDto response = movieDto(1L, "Gladiator", MovieStatus.COMING_SOON);
+
+        when(movieRepository.existsByTitleIgnoreCaseAndReleaseDateAndLanguage(
+                        "Gladiator", LocalDate.of(2026, 6, 1), Language.ENGLISH))
+                .thenReturn(false);
+        when(movieMapper.toEntity(normalizedRequest)).thenReturn(movieToSave);
+        when(movieRepository.save(movieToSave)).thenReturn(savedMovie);
+        when(movieMapper.toDto(savedMovie)).thenReturn(response);
+
+        MovieResDto result = movieService.addMovie(request);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(movieRepository)
+                .existsByTitleIgnoreCaseAndReleaseDateAndLanguage(
+                        "Gladiator", LocalDate.of(2026, 6, 1), Language.ENGLISH);
+        verify(movieMapper).toEntity(normalizedRequest);
+    }
+
+    @Test
     void addMovieTranslatesDatabaseDuplicateViolationToMovieAlreadyExistsException() {
         MovieReqDto request = new MovieReqDto(
                 "Gladiator",

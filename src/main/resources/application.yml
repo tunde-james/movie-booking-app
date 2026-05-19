@@ -3,9 +3,9 @@ spring:
     name: moviebookingapp
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3307/moviebookingapp}
-    username: ${DB_USERNAME:moviebooking}
-    password: ${DB_PASSWORD:moviebooking}
+    url: ${MOVIE_BOOKING_APP_DB_URL:jdbc:mysql://localhost:3307/moviebookingapp}
+    username: ${MOVIE_BOOKING_APP_DB_USER:moviebooking}
+    password: ${MOVIE_BOOKING_APP_DB_PASSWORD:moviebooking}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:

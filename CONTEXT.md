@@ -114,6 +114,10 @@ For v1, the app rejects only exact duplicate movies with the same:
 - releaseDate
 - language
 
+Reject duplicate movies with the same normalized title, releaseDate, and language.
+
+Normalized title comparison is case-insensitive.
+
 Later, duplicate detection may use external identifiers such as TMDB or IMDb ids.
 
 ## Cinema And Auditorium Model

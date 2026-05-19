@@ -70,13 +70,16 @@ public class MovieService {
     @Transactional
     public MovieResDto addMovie(MovieReqDto reqDto) {
 
+        MovieReqDto normalizedReqDto = normalizeMovieRequest(reqDto);
+
         if (movieRepository.existsByTitleIgnoreCaseAndReleaseDateAndLanguage(
-                reqDto.title(), reqDto.releaseDate(), reqDto.language())) {
+                normalizedReqDto.title(), normalizedReqDto.releaseDate(), normalizedReqDto.language())) {
             throw new MovieAlreadyExistsException(
                     "A movie with the same title, release date, and language already exists.");
         }
 
-        Movie movie = Objects.requireNonNull(movieMapper.toEntity(reqDto), "Movie mapper must not return null");
+        Movie movie =
+                Objects.requireNonNull(movieMapper.toEntity(normalizedReqDto), "Movie mapper must not return null");
 
         try {
             Movie savedMovie = movieRepository.save(movie);
@@ -123,5 +126,19 @@ public class MovieService {
         movie.setDeleted(true);
 
         movieRepository.save(movie);
+    }
+
+    private MovieReqDto normalizeMovieRequest(MovieReqDto reqDto) {
+        
+        return new MovieReqDto(
+                reqDto.title().trim(),
+                reqDto.description(),
+                reqDto.genre(),
+                reqDto.durationInMinutes(),
+                reqDto.releaseDate(),
+                reqDto.language(),
+                reqDto.rating(),
+                reqDto.movieStatus(),
+                reqDto.posterUrl());
     }
 }
