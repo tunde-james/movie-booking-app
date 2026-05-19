@@ -26,6 +26,5 @@ public interface CinemaMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "shows", ignore = true)
     @Mapping(target = "deleted", ignore = true)
-    void updateEntityFromDto(CinemaReqDto req, @MappingTarget
-    Cinema cinema);
+    void updateEntityFromDto(CinemaReqDto req, @MappingTarget Cinema cinema);
 }

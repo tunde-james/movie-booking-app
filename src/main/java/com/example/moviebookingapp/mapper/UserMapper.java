@@ -28,7 +28,5 @@ public interface UserMapper {
     @Mapping(target = "bookings", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "password", ignore = true)
-    void updateEntityFromDto(UserReqDto req, @MappingTarget
-    User user);
-
+    void updateEntityFromDto(UserReqDto req, @MappingTarget User user);
 }

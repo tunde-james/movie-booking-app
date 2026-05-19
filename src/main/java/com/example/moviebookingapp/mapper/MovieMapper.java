@@ -26,6 +26,5 @@ public interface MovieMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "shows", ignore = true)
     @Mapping(target = "deleted", ignore = true)
-    void updateEntityFromDto(MovieReqDto req, @MappingTarget
-    Movie movie);
+    void updateEntityFromDto(MovieReqDto req, @MappingTarget Movie movie);
 }

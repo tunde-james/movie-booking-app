@@ -114,6 +114,10 @@ For v1, the app rejects only exact duplicate movies with the same:
 - releaseDate
 - language
 
+Reject duplicate movies with the same normalized title, releaseDate, and language.
+
+Normalized title comparison is case-insensitive.
+
 Later, duplicate detection may use external identifiers such as TMDB or IMDb ids.
 
 ## Cinema And Auditorium Model
@@ -358,6 +362,8 @@ Example show time:
 `2026-06-01T18:30:00+01:00`
 
 If the app later supports cinemas across multiple time zones, add a `timeZone` field to Cinema.
+
+Database migrations will use Flyway. Hibernate `ddl-auto=update` is temporary during early development and should be replaced before Issue 3.
 
 ## Open Questions
 

@@ -15,6 +15,14 @@ public final class ApiProblemDetails {
     private ApiProblemDetails() {}
 
     @SuppressWarnings("null")
+    public static ResponseEntity<ProblemDetail> response(HttpStatus status, ProblemDetail problemDetail) {
+
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problemDetail);
+    }
+
+    @SuppressWarnings("null")
     public static ProblemDetail validationError(String instance, List<FieldErrorDetail> errors) {
 
         ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
@@ -42,10 +50,14 @@ public final class ApiProblemDetails {
     }
 
     @SuppressWarnings("null")
-    public static ResponseEntity<ProblemDetail> response(HttpStatus status, ProblemDetail problemDetail) {
+    public static ProblemDetail notFound(String instance, String type, String title, String detail) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
 
-        return ResponseEntity.status(status)
-                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                .body(problemDetail);
+        problemDetail.setType(URI.create(PROBLEM_BASE_URL + "/" + type));
+        problemDetail.setTitle(title);
+        problemDetail.setDetail(detail);
+        problemDetail.setInstance(URI.create(instance));
+
+        return problemDetail;
     }
 }

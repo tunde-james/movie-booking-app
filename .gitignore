@@ -41,3 +41,18 @@ build/
 .scratch/
 tmp-agent/
 agent-output/
+
+# Docker
+/docker/
+/docker-compose.yml
+/docker-compose.override.yml
+
+# Application-specific
+.env
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+*.jks
+*.keystore

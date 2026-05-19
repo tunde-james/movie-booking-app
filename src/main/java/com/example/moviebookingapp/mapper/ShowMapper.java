@@ -12,7 +12,9 @@ import com.example.moviebookingapp.dtos.show.ShowReqDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
 import com.example.moviebookingapp.entity.Show;
 
-@Mapper(config = BaseMapperConfig.class, uses = { MovieMapper.class, CinemaMapper.class })
+@Mapper(
+        config = BaseMapperConfig.class,
+        uses = {MovieMapper.class, CinemaMapper.class})
 public interface ShowMapper {
 
     @Mapping(target = "movie", ignore = true)
@@ -33,6 +35,5 @@ public interface ShowMapper {
     @Mapping(target = "bookings", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "availableSeats", ignore = true)
-    void updateEntityFromDto(ShowReqDto req, @MappingTarget
-    Show show);
+    void updateEntityFromDto(ShowReqDto req, @MappingTarget Show show);
 }

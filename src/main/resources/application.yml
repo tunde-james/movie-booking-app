@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: moviebookingapp
+
+  datasource:
+    url: ${MOVIE_BOOKING_APP_DB_URL:jdbc:mysql://localhost:3307/moviebookingapp}
+    username: ${MOVIE_BOOKING_APP_DB_USER:moviebooking}
+    password: ${MOVIE_BOOKING_APP_DB_PASSWORD:moviebooking}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true

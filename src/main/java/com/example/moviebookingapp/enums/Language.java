@@ -1,6 +1,10 @@
 package com.example.moviebookingapp.enums;
 
 public enum Language {
-    
-    ENGLISH, FRENCH, SPANISH, HINDI, PORTUGUESE
+    ENGLISH,
+    FRENCH,
+    GERMAN,
+    SPANISH,
+    HINDI,
+    PORTUGUESE
 }
