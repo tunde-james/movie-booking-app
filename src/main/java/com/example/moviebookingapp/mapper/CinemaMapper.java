@@ -16,7 +16,6 @@ import com.example.moviebookingapp.entity.Cinema;
 public interface CinemaMapper {
 
     @Mapping(target = "deleted", ignore = true)
-    @Mapping(target = "shows", ignore = true)
     Cinema toEntity(CinemaReqDto req);
 
     CinemaResDto toDto(Cinema cinema);
@@ -24,7 +23,6 @@ public interface CinemaMapper {
     List<CinemaResDto> toDtoList(List<Cinema> cinemas);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "shows", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     void updateEntityFromDto(CinemaReqDto req, @MappingTarget Cinema cinema);
 }

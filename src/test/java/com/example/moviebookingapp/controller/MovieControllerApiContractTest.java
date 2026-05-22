@@ -8,6 +8,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -89,6 +90,47 @@ class MovieControllerApiContractTest {
                 .andExpect(header().string(HttpHeaders.LOCATION, "/api/v1/movies/1"))
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.title").value("Gladiator"))
+                .andExpect(jsonPath("$.movieStatus").value("COMING_SOON"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateMovieReturnsOkAndUpdatedResource() throws Exception {
+        MovieResDto updatedMovie = new MovieResDto(
+                1L,
+                "Gladiator Updated",
+                "Updated description.",
+                Genre.ACTION,
+                160,
+                LocalDate.of(2026, 6, 1),
+                Language.ENGLISH,
+                MovieRating.PG_13,
+                MovieStatus.COMING_SOON,
+                "https://example.com/gladiator-updated.jpg");
+
+        when(movieService.updateMovie(any(Long.class), any(MovieReqDto.class))).thenReturn(updatedMovie);
+
+        String requestBody = """
+            {
+              "title": "Gladiator Updated",
+              "description": "Updated description.",
+              "genre": "ACTION",
+              "durationInMinutes": 160,
+              "releaseDate": "2026-06-01",
+              "language": "ENGLISH",
+              "rating": "PG_13",
+              "movieStatus": "COMING_SOON",
+              "posterUrl": "https://example.com/gladiator-updated.jpg"
+            }
+            """;
+
+        mockMvc.perform(put("/api/v1/movies/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Gladiator Updated"))
                 .andExpect(jsonPath("$.movieStatus").value("COMING_SOON"));
     }
 

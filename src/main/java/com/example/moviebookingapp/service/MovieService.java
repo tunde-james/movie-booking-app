@@ -129,7 +129,7 @@ public class MovieService {
     }
 
     private MovieReqDto normalizeMovieRequest(MovieReqDto reqDto) {
-        
+
         return new MovieReqDto(
                 reqDto.title().trim(),
                 reqDto.description(),
