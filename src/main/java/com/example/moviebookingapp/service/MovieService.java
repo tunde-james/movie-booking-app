@@ -97,11 +97,19 @@ public class MovieService {
             throw new IllegalArgumentException("Movie ID cannot be null");
         }
 
+        MovieReqDto normalizedReqDto = normalizeMovieRequest(reqDto);
+
         Movie movie = movieRepository
                 .findById(id)
                 .orElseThrow(() -> new MovieNotFoundException("Movie not found with ID: " + id));
 
-        movieMapper.updateEntityFromDto(reqDto, movie);
+        if (movieRepository.existsByTitleIgnoreCaseAndReleaseDateAndLanguageAndIdNot(
+                normalizedReqDto.title(), normalizedReqDto.releaseDate(), normalizedReqDto.language(), id)) {
+            throw new MovieAlreadyExistsException(
+                    "A movie with the same title, release date, and language already exists.");
+        }
+
+        movieMapper.updateEntityFromDto(normalizedReqDto, movie);
 
         try {
             Movie updatedMovie = movieRepository.save(movie);

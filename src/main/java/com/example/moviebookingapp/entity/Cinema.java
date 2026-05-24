@@ -18,7 +18,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Cinema extends BaseEntity {
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, unique = true, length = 150)
     private String name;
 
     @Column(nullable = false, length = 255)

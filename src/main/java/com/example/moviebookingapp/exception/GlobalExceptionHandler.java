@@ -58,4 +58,24 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
     }
+
+    @ExceptionHandler(CinemaNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleCinemaNotFoundException(
+            CinemaNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "cinema-not-found", "Cinema not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
+
+    @ExceptionHandler(CinemaAlreadyExistsException.class)
+    public ResponseEntity<ProblemDetail> handleCinemaAlreadyExistsException(
+            CinemaAlreadyExistsException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "cinema-already-exists", "Cinema already exists", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
 }
