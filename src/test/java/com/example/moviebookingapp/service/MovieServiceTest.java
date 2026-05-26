@@ -143,6 +143,27 @@ class MovieServiceTest {
     }
 
     @Test
+    void addMovieRejectsNullTitleBeforeTrimming() {
+
+        MovieReqDto request = new MovieReqDto(
+                null,
+                "A historical action drama.",
+                Genre.ACTION,
+                155,
+                LocalDate.of(2026, 6, 1),
+                Language.ENGLISH,
+                MovieRating.PG_13,
+                MovieStatus.COMING_SOON,
+                "https://example.com/gladiator.jpg");
+
+        assertThatThrownBy(() -> movieService.addMovie(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Movie request and title cannot be null");
+
+        verify(movieRepository, never()).save(any(Movie.class));
+    }
+
+    @Test
     void addMovieSavesMovieAndReturnsResponse() {
         MovieReqDto request = new MovieReqDto(
                 "Gladiator",

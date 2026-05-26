@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,46 @@ class CinemaServiceTest {
 
     @InjectMocks
     private CinemaService cinemaService;
+
+    @Test
+    void getCinemasReturnsNonDeletedCinemas() {
+
+        Cinema cinema = cinema("Filmhouse Lekki", "Admiralty Way", "Lagos");
+        CinemaResDto response = new CinemaResDto(1L, "Filmhouse Lekki", "Admiralty Way", "Lagos");
+
+        when(cinemaRepository.findAllByDeletedFalse()).thenReturn(List.of(cinema));
+        when(cinemaMapper.toDtoList(List.of(cinema))).thenReturn(List.of(response));
+
+        List<CinemaResDto> result = cinemaService.getCinemas();
+
+        assertThat(result).containsExactly(response);
+
+        verify(cinemaRepository).findAllByDeletedFalse();
+    }
+
+    @Test
+    void getCinemaByIdReturnsNonDeletedCinema() {
+
+        Cinema cinema = cinema("Filmhouse Lekki", "Admiralty Way", "Lagos");
+        CinemaResDto response = new CinemaResDto(1L, "Filmhouse Lekki", "Admiralty Way", "Lagos");
+
+        when(cinemaRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(cinema));
+        when(cinemaMapper.toDto(cinema)).thenReturn(response);
+
+        CinemaResDto result = cinemaService.getCinemaById(1L);
+
+        assertThat(result).isEqualTo(response);
+    }
+
+    @Test
+    void getCinemaByIdReturnsNotFoundWhenCinemaIsMissingOrDeleted() {
+
+        when(cinemaRepository.findByIdAndDeletedFalse(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cinemaService.getCinemaById(99L))
+                .isInstanceOf(CinemaNotFoundException.class)
+                .hasMessage("Cinema not found with ID: 99");
+    }
 
     @Test
     void addCinemaSavesCinemaAndReturnsResponse() {
@@ -80,7 +121,7 @@ class CinemaServiceTest {
         Cinema existingCinema = cinema("Genesis Deluxe", "The Palms Mall", "Lagos");
         CinemaReqDto request = new CinemaReqDto(" Filmhouse Lekki ", "Another Address", "Abuja");
 
-        when(cinemaRepository.findById(1L)).thenReturn(Optional.of(existingCinema));
+        when(cinemaRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(existingCinema));
         when(cinemaRepository.existsByNameIgnoreCaseAndIdNot("Filmhouse Lekki", 1L))
                 .thenReturn(true);
 
@@ -97,7 +138,7 @@ class CinemaServiceTest {
 
         CinemaReqDto request = new CinemaReqDto("Filmhouse Lekki", "Address", "Lagos");
 
-        when(cinemaRepository.findById(99L)).thenReturn(Optional.empty());
+        when(cinemaRepository.findByIdAndDeletedFalse(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cinemaService.updateCinema(99L, request))
                 .isInstanceOf(CinemaNotFoundException.class)
@@ -117,10 +158,10 @@ class CinemaServiceTest {
 
     @Test
     void deleteCinemaSoftDeletesExistingCinema() {
-        
+
         Cinema cinema = cinema("Filmhouse Lekki", "Admiralty Way", "Lagos");
 
-        when(cinemaRepository.findById(1L)).thenReturn(Optional.of(cinema));
+        when(cinemaRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(cinema));
         when(cinemaRepository.save(cinema)).thenReturn(cinema);
 
         cinemaService.deleteCinema(1L);

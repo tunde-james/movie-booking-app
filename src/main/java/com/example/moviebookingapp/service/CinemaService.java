@@ -31,7 +31,7 @@ public class CinemaService {
     @Transactional(readOnly = true)
     public List<CinemaResDto> getCinemas() {
 
-        return cinemaMapper.toDtoList(cinemaRepository.findAll());
+        return cinemaMapper.toDtoList(cinemaRepository.findAllByDeletedFalse());
     }
 
     @Transactional(readOnly = true)
@@ -42,7 +42,7 @@ public class CinemaService {
         }
 
         Cinema cinema = cinemaRepository
-                .findById(id)
+                .findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new CinemaNotFoundException("Cinema not found with ID: " + id));
 
         return cinemaMapper.toDto(cinema);
@@ -76,7 +76,7 @@ public class CinemaService {
         }
 
         Cinema cinema = cinemaRepository
-                .findById(id)
+                .findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new CinemaNotFoundException("Cinema not found with ID: " + id));
 
         CinemaReqDto normalizedReqDto = normalizeCinemaRequest(reqDto);
@@ -104,7 +104,7 @@ public class CinemaService {
         }
 
         Cinema cinema = cinemaRepository
-                .findById(id)
+                .findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new CinemaNotFoundException("Cinema not found with ID: " + id));
 
         cinema.setDeleted(true);

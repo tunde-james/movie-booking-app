@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.example.moviebookingapp.dtos.auditorium.AuditoriumReqDto;
 import com.example.moviebookingapp.dtos.auditorium.AuditoriumResDto;
@@ -57,7 +58,7 @@ class AuditoriumServiceTest {
         Auditorium savedAuditorium = auditorium("Screen 1", AuditoriumType.STANDARD, 120);
         AuditoriumResDto response = new AuditoriumResDto(1L, 10L, "Screen 1", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.findById(10L)).thenReturn(Optional.of(cinema));
+        when(cinemaRepository.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(cinema));
         when(auditoriumMapper.toEntity(normalizedRequest)).thenReturn(auditoriumToSave);
         when(auditoriumRepository.save(auditoriumToSave)).thenReturn(savedAuditorium);
         when(auditoriumMapper.toDto(savedAuditorium)).thenReturn(response);
@@ -67,7 +68,7 @@ class AuditoriumServiceTest {
         assertThat(result).isEqualTo(response);
         assertThat(auditoriumToSave.getCinema()).isEqualTo(cinema);
 
-        verify(cinemaRepository).findById(10L);
+        verify(cinemaRepository).findByIdAndDeletedFalse(10L);
         verify(auditoriumMapper).toEntity(normalizedRequest);
         verify(auditoriumRepository).save(auditoriumToSave);
     }
@@ -78,7 +79,7 @@ class AuditoriumServiceTest {
         Cinema cinema = new Cinema();
         AuditoriumReqDto request = new AuditoriumReqDto(" Screen 1 ", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.findById(10L)).thenReturn(Optional.of(cinema));
+        when(cinemaRepository.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(cinema));
         when(auditoriumRepository.existsByCinemaIdAndNameIgnoreCase(10L, "Screen 1"))
                 .thenReturn(true);
 
@@ -91,11 +92,29 @@ class AuditoriumServiceTest {
     }
 
     @Test
+    void addAuditoriumTranslatesDatabaseDuplicateViolationToAuditoriumAlreadyExistsException() {
+
+        Cinema cinema = new Cinema();
+        AuditoriumReqDto request = new AuditoriumReqDto(" Screen 1 ", AuditoriumType.STANDARD, 120);
+        AuditoriumReqDto normalizedRequest = new AuditoriumReqDto("Screen 1", AuditoriumType.STANDARD, 120);
+        Auditorium auditoriumToSave = auditorium("Screen 1", AuditoriumType.STANDARD, 120);
+
+        when(cinemaRepository.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(cinema));
+        when(auditoriumMapper.toEntity(normalizedRequest)).thenReturn(auditoriumToSave);
+        when(auditoriumRepository.save(auditoriumToSave))
+                .thenThrow(new DataIntegrityViolationException("Duplicate key"));
+
+        assertThatThrownBy(() -> auditoriumService.addAuditorium(10L, request))
+                .isInstanceOf(AuditoriumAlreadyExistsException.class)
+                .hasMessage("An auditorium with the same name already exists in this cinema.");
+    }
+
+    @Test
     void addAuditoriumReturnsNotFoundWhenCinemaDoesNotExist() {
 
         AuditoriumReqDto request = new AuditoriumReqDto("Screen 1", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.findById(99L)).thenReturn(Optional.empty());
+        when(cinemaRepository.findByIdAndDeletedFalse(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> auditoriumService.addAuditorium(99L, request))
                 .isInstanceOf(CinemaNotFoundException.class)
@@ -115,7 +134,7 @@ class AuditoriumServiceTest {
 
         AuditoriumResDto secondResponse = new AuditoriumResDto(2L, 10L, "IMAX Hall", AuditoriumType.IMAX, 250);
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaId(10L)).thenReturn(List.of(firstAuditorium, secondAuditorium));
         when(auditoriumMapper.toDtoList(List.of(firstAuditorium, secondAuditorium)))
                 .thenReturn(List.of(firstResponse, secondResponse));
@@ -124,14 +143,14 @@ class AuditoriumServiceTest {
 
         assertThat(result).containsExactly(firstResponse, secondResponse);
 
-        verify(cinemaRepository).existsById(10L);
+        verify(cinemaRepository).existsByIdAndDeletedFalse(10L);
         verify(auditoriumRepository).findByCinemaId(10L);
     }
 
     @Test
     void getAuditoriumsByCinemaReturnsNotFoundWhenCinemaDoesNotExist() {
 
-        when(cinemaRepository.existsById(99L)).thenReturn(false);
+        when(cinemaRepository.existsByIdAndDeletedFalse(99L)).thenReturn(false);
 
         assertThatThrownBy(() -> auditoriumService.getAuditoriumsByCinema(99L))
                 .isInstanceOf(CinemaNotFoundException.class)
@@ -146,7 +165,7 @@ class AuditoriumServiceTest {
         Auditorium auditorium = auditorium("Screen 1", AuditoriumType.STANDARD, 120);
         AuditoriumResDto response = new AuditoriumResDto(1L, 10L, "Screen 1", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 1L)).thenReturn(Optional.of(auditorium));
         when(auditoriumMapper.toDto(auditorium)).thenReturn(response);
 
@@ -159,7 +178,7 @@ class AuditoriumServiceTest {
     @Test
     void getAuditoriumByIdReturnsNotFoundWhenAuditoriumDoesNotBelongToCinema() {
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> auditoriumService.getAuditoriumById(10L, 99L))
@@ -180,7 +199,7 @@ class AuditoriumServiceTest {
 
         AuditoriumResDto response = new AuditoriumResDto(1L, 10L, "IMAX Hall", AuditoriumType.IMAX, 250);
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 1L)).thenReturn(Optional.of(auditorium));
         when(auditoriumRepository.existsByCinemaIdAndNameIgnoreCaseAndIdNot(10L, "IMAX Hall", 1L))
                 .thenReturn(false);
@@ -200,7 +219,7 @@ class AuditoriumServiceTest {
 
         AuditoriumReqDto request = new AuditoriumReqDto("Screen 1", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.existsById(99L)).thenReturn(false);
+        when(cinemaRepository.existsByIdAndDeletedFalse(99L)).thenReturn(false);
 
         assertThatThrownBy(() -> auditoriumService.updateAuditorium(99L, 1L, request))
                 .isInstanceOf(CinemaNotFoundException.class)
@@ -214,7 +233,7 @@ class AuditoriumServiceTest {
 
         AuditoriumReqDto request = new AuditoriumReqDto("Screen 1", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> auditoriumService.updateAuditorium(10L, 99L, request))
@@ -230,7 +249,7 @@ class AuditoriumServiceTest {
         Auditorium auditorium = auditorium("Screen 1", AuditoriumType.STANDARD, 120);
         AuditoriumReqDto request = new AuditoriumReqDto("IMAX Hall", AuditoriumType.IMAX, 250);
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 1L)).thenReturn(Optional.of(auditorium));
         when(auditoriumRepository.existsByCinemaIdAndNameIgnoreCaseAndIdNot(10L, "IMAX Hall", 1L))
                 .thenReturn(true);
@@ -248,7 +267,7 @@ class AuditoriumServiceTest {
 
         Auditorium auditorium = auditorium("Screen 1", AuditoriumType.STANDARD, 120);
 
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 1L)).thenReturn(Optional.of(auditorium));
         when(auditoriumRepository.save(auditorium)).thenReturn(auditorium);
 
@@ -261,8 +280,8 @@ class AuditoriumServiceTest {
 
     @Test
     void deleteAuditoriumReturnsNotFoundWhenAuditoriumDoesNotBelongToCinema() {
-        
-        when(cinemaRepository.existsById(10L)).thenReturn(true);
+
+        when(cinemaRepository.existsByIdAndDeletedFalse(10L)).thenReturn(true);
         when(auditoriumRepository.findByCinemaIdAndId(10L, 99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> auditoriumService.deleteAuditorium(10L, 99L))

@@ -138,6 +138,10 @@ public class MovieService {
 
     private MovieReqDto normalizeMovieRequest(MovieReqDto reqDto) {
 
+        if (reqDto == null || reqDto.title() == null) {
+            throw new IllegalArgumentException("Movie request and title cannot be null");
+        }
+
         return new MovieReqDto(
                 reqDto.title().trim(),
                 reqDto.description(),

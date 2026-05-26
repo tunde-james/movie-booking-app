@@ -44,7 +44,7 @@ public class AuditoriumService {
             throw new IllegalArgumentException("Cinema ID cannot be null");
         }
 
-        if (!cinemaRepository.existsById(cinemaId)) {
+        if (!cinemaRepository.existsByIdAndDeletedFalse(cinemaId)) {
             throw new CinemaNotFoundException("Cinema not found with ID: " + cinemaId);
         }
 
@@ -62,7 +62,7 @@ public class AuditoriumService {
             throw new IllegalArgumentException("Auditorium ID cannot be null");
         }
 
-        if (!cinemaRepository.existsById(cinemaId)) {
+        if (!cinemaRepository.existsByIdAndDeletedFalse(cinemaId)) {
             throw new CinemaNotFoundException("Cinema not found with ID: " + cinemaId);
         }
 
@@ -81,7 +81,7 @@ public class AuditoriumService {
         }
 
         Cinema cinema = cinemaRepository
-                .findById(cinemaId)
+                .findByIdAndDeletedFalse(cinemaId)
                 .orElseThrow(() -> new CinemaNotFoundException("Cinema not found with ID: " + cinemaId));
 
         AuditoriumReqDto normalizedReqDto = normalizeAuditoriumRequest(reqDto);
@@ -95,9 +95,12 @@ public class AuditoriumService {
 
         auditorium.setCinema(cinema);
 
-        Auditorium savedAuditorium = auditoriumRepository.save(auditorium);
-
-        return auditoriumMapper.toDto(savedAuditorium);
+        try {
+            Auditorium savedAuditorium = auditoriumRepository.save(auditorium);
+            return auditoriumMapper.toDto(savedAuditorium);
+        } catch (DataIntegrityViolationException ex) {
+            throw new AuditoriumAlreadyExistsException(DUPLICATE_AUDITORIUM_MESSAGE);
+        }
     }
 
     @Transactional
@@ -111,7 +114,7 @@ public class AuditoriumService {
             throw new IllegalArgumentException("Auditorium ID cannot be null");
         }
 
-        if (!cinemaRepository.existsById(cinemaId)) {
+        if (!cinemaRepository.existsByIdAndDeletedFalse(cinemaId)) {
             throw new CinemaNotFoundException("Cinema not found with ID: " + cinemaId);
         }
 
@@ -147,7 +150,7 @@ public class AuditoriumService {
             throw new IllegalArgumentException("Auditorium ID cannot be null");
         }
 
-        if (!cinemaRepository.existsById(cinemaId)) {
+        if (!cinemaRepository.existsByIdAndDeletedFalse(cinemaId)) {
             throw new CinemaNotFoundException("Cinema not found with ID: " + cinemaId);
         }
 
