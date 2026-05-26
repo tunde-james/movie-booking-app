@@ -78,4 +78,24 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
     }
+
+    @ExceptionHandler(AuditoriumAlreadyExistsException.class)
+    public ResponseEntity<ProblemDetail> handleAuditoriumAlreadyExistsException(
+            AuditoriumAlreadyExistsException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "auditorium-already-exists", "Auditorium already exists", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(AuditoriumNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleAuditoriumNotFoundException(
+            AuditoriumNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "auditorium-not-found", "Auditorium not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
 }
