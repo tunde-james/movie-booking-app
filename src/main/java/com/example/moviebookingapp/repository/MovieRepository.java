@@ -11,4 +11,7 @@ import com.example.moviebookingapp.enums.Language;
 public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecificationExecutor<Movie> {
 
     boolean existsByTitleIgnoreCaseAndReleaseDateAndLanguage(String title, LocalDate releasDate, Language language);
+
+    boolean existsByTitleIgnoreCaseAndReleaseDateAndLanguageAndIdNot(
+            String title, LocalDate releasDate, Language language, Long id);
 }

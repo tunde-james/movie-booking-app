@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.example.moviebookingapp.config.JpaAuditingConfig;
 import com.example.moviebookingapp.entity.Movie;
 import com.example.moviebookingapp.enums.Genre;
 import com.example.moviebookingapp.enums.Language;
@@ -26,6 +28,7 @@ import com.example.moviebookingapp.repository.specification.MovieSpecifications;
 @SuppressWarnings({"null"})
 @DataJpaTest
 @Testcontainers
+@Import(JpaAuditingConfig.class)
 class MovieRepositoryTest {
 
     @Container
@@ -37,6 +40,7 @@ class MovieRepositoryTest {
 
     @Test
     void findAllWithPublicVisibleSpecificationReturnsOnlyComingSoonAndNowShowingMovies() {
+
         movieRepository.save(movie("Draft Movie", MovieStatus.DRAFT));
         Movie comingSoonMovie = movieRepository.save(movie("Coming Soon Movie", MovieStatus.COMING_SOON));
         Movie nowShowingMovie = movieRepository.save(movie("Now Showing Movie", MovieStatus.NOW_SHOWING));
@@ -50,13 +54,39 @@ class MovieRepositoryTest {
     }
 
     @Test
+    void softDeletedMoviesAreExcludedFromNormalReads() {
+
+        movieRepository.save(movie("Visible Movie", MovieStatus.COMING_SOON));
+
+        Movie deletedMovie = movie("Deleted Movie", MovieStatus.COMING_SOON);
+        deletedMovie.setDeleted(true);
+        movieRepository.save(deletedMovie);
+
+        List<Movie> result = movieRepository.findAll();
+
+        assertThat(result).extracting(Movie::getTitle).containsExactly("Visible Movie");
+    }
+
+    @Test
     void duplicateCheckUsesTitleReleaseDateAndLanguage() {
+
         movieRepository.save(movie("Gladiator", MovieStatus.COMING_SOON));
 
         boolean exists = movieRepository.existsByTitleIgnoreCaseAndReleaseDateAndLanguage(
                 "gladiator", LocalDate.of(2026, 6, 1), Language.ENGLISH);
 
         assertThat(exists).isTrue();
+    }
+
+    @Test
+    void databaseRejectsDuplicateTitleReleaseDateLanguageForActiveMovies() {
+
+        movieRepository.saveAndFlush(movie("Gladiator", MovieStatus.COMING_SOON));
+
+        assertThatThrownBy(() -> {
+                    movieRepository.saveAndFlush(movie("Gladiator", MovieStatus.NOW_SHOWING));
+                })
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private Movie movie(String title, MovieStatus status) {
@@ -71,15 +101,5 @@ class MovieRepositoryTest {
         movie.setMovieStatus(status);
         movie.setPosterUrl("https://example.com/poster.jpg");
         return movie;
-    }
-
-    @Test
-    void databaseRejectsDuplicateTitleReleaseDateLanguageForActiveMovies() {
-        movieRepository.saveAndFlush(movie("Gladiator", MovieStatus.COMING_SOON));
-
-        assertThatThrownBy(() -> {
-                    movieRepository.saveAndFlush(movie("Gladiator", MovieStatus.NOW_SHOWING));
-                })
-                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

@@ -5,6 +5,8 @@ import java.util.Objects;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -52,6 +55,46 @@ public class GlobalExceptionHandler {
 
         ProblemDetail problemDetail = ApiProblemDetails.notFound(
                 request.getRequestURI(), "movie-not-found", "Movie not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
+
+    @ExceptionHandler(CinemaNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleCinemaNotFoundException(
+            CinemaNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "cinema-not-found", "Cinema not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
+
+    @ExceptionHandler(CinemaAlreadyExistsException.class)
+    public ResponseEntity<ProblemDetail> handleCinemaAlreadyExistsException(
+            CinemaAlreadyExistsException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "cinema-already-exists", "Cinema already exists", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(AuditoriumAlreadyExistsException.class)
+    public ResponseEntity<ProblemDetail> handleAuditoriumAlreadyExistsException(
+            AuditoriumAlreadyExistsException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "auditorium-already-exists", "Auditorium already exists", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(AuditoriumNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleAuditoriumNotFoundException(
+            AuditoriumNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "auditorium-not-found", "Auditorium not found", ex.getMessage());
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
     }
