@@ -98,4 +98,24 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
     }
+
+    @ExceptionHandler(InvalidShowScheduleException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidShowScheduleException(
+            InvalidShowScheduleException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.badRequest(
+                request.getRequestURI(), "invalid-show-schedule", "Invalid show schedule", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.BAD_REQUEST, problemDetail);
+    }
+
+    @ExceptionHandler(ShowScheduleConflictException.class)
+    public ResponseEntity<ProblemDetail> handleShowScheduleConflictException(
+            ShowScheduleConflictException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "show-schedule-conflict", "Show schedule conflict", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
 }
