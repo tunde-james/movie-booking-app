@@ -30,6 +30,7 @@ import com.example.moviebookingapp.entity.Cinema;
 import com.example.moviebookingapp.entity.Movie;
 import com.example.moviebookingapp.entity.Show;
 import com.example.moviebookingapp.enums.AuditoriumType;
+import com.example.moviebookingapp.enums.BookingStatus;
 import com.example.moviebookingapp.enums.Genre;
 import com.example.moviebookingapp.enums.Language;
 import com.example.moviebookingapp.enums.MovieRating;
@@ -38,10 +39,12 @@ import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.AuditoriumNotFoundException;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
 import com.example.moviebookingapp.exception.MovieNotFoundException;
+import com.example.moviebookingapp.exception.ShowBookingConflictException;
 import com.example.moviebookingapp.exception.ShowNotFoundException;
 import com.example.moviebookingapp.exception.ShowScheduleConflictException;
 import com.example.moviebookingapp.mapper.ShowMapper;
 import com.example.moviebookingapp.repository.AuditoriumRepository;
+import com.example.moviebookingapp.repository.BookingRepository;
 import com.example.moviebookingapp.repository.MovieRepository;
 import com.example.moviebookingapp.repository.ShowRepository;
 
@@ -57,6 +60,9 @@ class ShowServiceTest {
 
     @Mock
     private AuditoriumRepository auditoriumRepository;
+
+    @Mock
+    private BookingRepository bookingRepository;
 
     @Mock
     private ShowMapper showMapper;
@@ -328,6 +334,7 @@ class ShowServiceTest {
                 new BigDecimal("4000.00"));
 
         Show existingShow = new Show();
+        existingShow.setStatus(ShowStatus.SCHEDULED);
         Movie movie = movie("Gladiator");
         Auditorium auditorium = auditorium("Screen 1", 120);
 
@@ -365,8 +372,36 @@ class ShowServiceTest {
 
         assertThat(result).isEqualTo(response);
 
-        verify(showMapper).updateEntityFromDto(request, movie, auditorium, ShowStatus.SCHEDULED, 120, existingShow);
+        verify(showMapper).updateEntityFromDto(request, movie, auditorium, existingShow);
         verify(showRepository).save(existingShow);
+    }
+
+    @Test
+    void updateShowRejectsActiveBookings() {
+
+        ShowReqDto request = new ShowReqDto(
+                100L,
+                20L,
+                OffsetDateTime.parse("2026-06-01T19:00:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                new BigDecimal("4000.00"));
+
+        Show existingShow = new Show();
+
+        when(showRepository.findById(1L)).thenReturn(Optional.of(existingShow));
+        when(bookingRepository.existsByShowIdAndBookingStatusInAndDeletedFalse(
+                        1L, List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> showService.updateShow(1L, request))
+                .isInstanceOf(ShowBookingConflictException.class)
+                .hasMessage("Show cannot be changed because it has active bookings");
+
+        verify(movieRepository, never()).findById(any(Long.class));
+        verify(auditoriumRepository, never()).findById(any(Long.class));
+        verify(showMapper, never())
+                .updateEntityFromDto(any(ShowReqDto.class), any(Movie.class), any(Auditorium.class), any(Show.class));
+        verify(showRepository, never()).save(any(Show.class));
     }
 
     @Test
@@ -420,13 +455,7 @@ class ShowServiceTest {
                 .hasMessage("Auditorium already has a scheduled show in this time window");
 
         verify(showMapper, never())
-                .updateEntityFromDto(
-                        any(ShowReqDto.class),
-                        any(Movie.class),
-                        any(Auditorium.class),
-                        any(ShowStatus.class),
-                        any(Integer.class),
-                        any(Show.class));
+                .updateEntityFromDto(any(ShowReqDto.class), any(Movie.class), any(Auditorium.class), any(Show.class));
         verify(showRepository, never()).save(any(Show.class));
     }
 
@@ -443,6 +472,25 @@ class ShowServiceTest {
         assertThat(show.isDeleted()).isTrue();
 
         verify(showRepository).save(show);
+    }
+
+    @Test
+    void deleteShowRejectsActiveBookings() {
+
+        Show show = new Show();
+
+        when(showRepository.findById(1L)).thenReturn(Optional.of(show));
+        when(bookingRepository.existsByShowIdAndBookingStatusInAndDeletedFalse(
+                        1L, List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> showService.deleteShow(1L))
+                .isInstanceOf(ShowBookingConflictException.class)
+                .hasMessage("Show cannot be changed because it has active bookings");
+
+        assertThat(show.isDeleted()).isFalse();
+
+        verify(showRepository, never()).save(any(Show.class));
     }
 
     @Test

@@ -46,16 +46,10 @@ public interface ShowMapper {
     @Mapping(target = "startTime", source = "reqDto.startTime")
     @Mapping(target = "endTime", source = "reqDto.endTime")
     @Mapping(target = "pricePerTicket", source = "reqDto.pricePerTicket")
-    @Mapping(target = "status", source = "status")
-    @Mapping(target = "totalCapacity", source = "capacity")
-    @Mapping(target = "availableCapacity", source = "capacity")
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "totalCapacity", ignore = true)
+    @Mapping(target = "availableCapacity", ignore = true)
     @Mapping(target = "bookings", ignore = true)
     @Mapping(target = "deleted", ignore = true)
-    void updateEntityFromDto(
-            ShowReqDto reqDto,
-            Movie movie,
-            Auditorium auditorium,
-            ShowStatus status,
-            Integer capacity,
-            @MappingTarget Show show);
+    void updateEntityFromDto(ShowReqDto reqDto, Movie movie, Auditorium auditorium, @MappingTarget Show show);
 }

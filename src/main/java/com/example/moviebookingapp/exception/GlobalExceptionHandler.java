@@ -119,6 +119,16 @@ public class GlobalExceptionHandler {
         return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
     }
 
+    @ExceptionHandler(ShowBookingConflictException.class)
+    public ResponseEntity<ProblemDetail> handleShowBookingConflictException(
+            ShowBookingConflictException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "show-booking-conflict", "Show booking conflict", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
     @ExceptionHandler(ShowNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleShowNotFoundException(
             ShowNotFoundException ex, HttpServletRequest request) {

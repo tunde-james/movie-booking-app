@@ -14,14 +14,17 @@ import com.example.moviebookingapp.dtos.show.ShowSearchCriteria;
 import com.example.moviebookingapp.entity.Auditorium;
 import com.example.moviebookingapp.entity.Movie;
 import com.example.moviebookingapp.entity.Show;
+import com.example.moviebookingapp.enums.BookingStatus;
 import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.AuditoriumNotFoundException;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
 import com.example.moviebookingapp.exception.MovieNotFoundException;
+import com.example.moviebookingapp.exception.ShowBookingConflictException;
 import com.example.moviebookingapp.exception.ShowNotFoundException;
 import com.example.moviebookingapp.exception.ShowScheduleConflictException;
 import com.example.moviebookingapp.mapper.ShowMapper;
 import com.example.moviebookingapp.repository.AuditoriumRepository;
+import com.example.moviebookingapp.repository.BookingRepository;
 import com.example.moviebookingapp.repository.MovieRepository;
 import com.example.moviebookingapp.repository.ShowRepository;
 import com.example.moviebookingapp.repository.specification.ShowSpecifications;
@@ -30,20 +33,27 @@ import com.example.moviebookingapp.repository.specification.ShowSpecifications;
 public class ShowService {
 
     private static final long CLEANUP_BUFFER_MINUTES = 15;
+    private static final List<BookingStatus> ACTIVE_BOOKING_STATUSES =
+            List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
+    private static final String SHOW_HAS_ACTIVE_BOOKINGS_MESSAGE =
+            "Show cannot be changed because it has active bookings";
 
     private final ShowRepository showRepository;
     private final MovieRepository movieRepository;
     private final AuditoriumRepository auditoriumRepository;
+    private final BookingRepository bookingRepository;
     private final ShowMapper showMapper;
 
     public ShowService(
             ShowRepository showRepository,
             MovieRepository movieRepository,
             AuditoriumRepository auditoriumRepository,
+            BookingRepository bookingRepository,
             ShowMapper showMapper) {
         this.showRepository = showRepository;
         this.movieRepository = movieRepository;
         this.auditoriumRepository = auditoriumRepository;
+        this.bookingRepository = bookingRepository;
         this.showMapper = showMapper;
     }
 
@@ -54,7 +64,7 @@ public class ShowService {
         Long cinemaId = criteria == null ? null : criteria.cinemaId();
         Long auditoriumId = criteria == null ? null : criteria.auditoriumId();
         java.time.LocalDate date = criteria == null ? null : criteria.date();
-        ShowStatus status = criteria == null ? null : criteria.status();
+        ShowStatus status = criteria == null || criteria.status() == null ? ShowStatus.SCHEDULED : criteria.status();
         String movieTitle = criteria == null ? null : criteria.movieTitle();
         String cinemaName = criteria == null ? null : criteria.cinemaName();
         String city = criteria == null ? null : criteria.city();
@@ -132,6 +142,8 @@ public class ShowService {
                 .findById(id)
                 .orElseThrow(() -> new ShowNotFoundException("Show not found with ID: " + id));
 
+        ensureShowHasNoActiveBookings(id);
+
         Movie movie = movieRepository
                 .findById(movieId)
                 .orElseThrow(() -> new MovieNotFoundException("Movie not found with ID: " + movieId));
@@ -142,8 +154,7 @@ public class ShowService {
 
         validateNoScheduleConflictForUpdate(id, auditoriumId, validatedReqDto.startTime(), validatedReqDto.endTime());
 
-        showMapper.updateEntityFromDto(
-                validatedReqDto, movie, auditorium, ShowStatus.SCHEDULED, auditorium.getCapacity(), show);
+        showMapper.updateEntityFromDto(validatedReqDto, movie, auditorium, show);
 
         Show savedShow = showRepository.save(show);
 
@@ -161,12 +172,18 @@ public class ShowService {
                 .findById(id)
                 .orElseThrow(() -> new ShowNotFoundException("Show not found with ID: " + id));
 
+        ensureShowHasNoActiveBookings(id);
+
         show.setDeleted(true);
 
         showRepository.save(show);
     }
 
     private void validateScheduleWindow(ShowReqDto reqDto) {
+
+        if (reqDto.startTime() == null || reqDto.endTime() == null) {
+            throw new InvalidShowScheduleException("Show start time and end time are required");
+        }
 
         if (!reqDto.endTime().isAfter(reqDto.startTime())) {
             throw new InvalidShowScheduleException("Show end time must be after start time");
@@ -193,6 +210,13 @@ public class ShowService {
         if (showRepository.existsOverlappingScheduledShowExcludingId(
                 showId, auditoriumId, ShowStatus.SCHEDULED, bufferedStart, bufferedEnd)) {
             throw new ShowScheduleConflictException("Auditorium already has a scheduled show in this time window");
+        }
+    }
+
+    private void ensureShowHasNoActiveBookings(Long showId) {
+
+        if (bookingRepository.existsByShowIdAndBookingStatusInAndDeletedFalse(showId, ACTIVE_BOOKING_STATUSES)) {
+            throw new ShowBookingConflictException(SHOW_HAS_ACTIVE_BOOKINGS_MESSAGE);
         }
     }
 }

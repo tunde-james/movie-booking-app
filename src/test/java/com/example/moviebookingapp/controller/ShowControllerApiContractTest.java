@@ -36,6 +36,7 @@ import com.example.moviebookingapp.dtos.show.ShowSearchCriteria;
 import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
+import com.example.moviebookingapp.exception.ShowBookingConflictException;
 import com.example.moviebookingapp.exception.ShowNotFoundException;
 import com.example.moviebookingapp.exception.ShowScheduleConflictException;
 import com.example.moviebookingapp.service.ShowService;
@@ -357,6 +358,36 @@ class ShowControllerApiContractTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void updateShowReturnsProblemDetailsWhenShowHasActiveBookings() throws Exception {
+
+        when(showService.updateShow(any(Long.class), any(ShowReqDto.class)))
+                .thenThrow(new ShowBookingConflictException("Show cannot be changed because it has active bookings"));
+
+        String requestBody = """
+        {
+          "movieId": 100,
+          "auditoriumId": 20,
+          "startTime": "2026-06-01T19:00:00+01:00",
+          "endTime": "2026-06-01T21:15:00+01:00",
+          "pricePerTicket": 4000.00
+        }
+        """;
+
+        mockMvc.perform(put("/api/v1/shows/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/show-booking-conflict"))
+                .andExpect(jsonPath("$.title").value("Show booking conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Show cannot be changed because it has active bookings"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/shows/1"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void deleteShowReturnsNoContent() throws Exception {
 
         doNothing().when(showService).deleteShow(1L);
@@ -384,5 +415,23 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.detail").value("Show not found with ID: 99"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/shows/99"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void deleteShowReturnsProblemDetailsWhenShowHasActiveBookings() throws Exception {
+
+        doThrow(new ShowBookingConflictException("Show cannot be changed because it has active bookings"))
+                .when(showService)
+                .deleteShow(1L);
+
+        mockMvc.perform(delete("/api/v1/shows/1").with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/show-booking-conflict"))
+                .andExpect(jsonPath("$.title").value("Show booking conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Show cannot be changed because it has active bookings"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/shows/1"));
     }
 }
