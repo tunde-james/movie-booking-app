@@ -41,12 +41,21 @@ public interface ShowMapper {
     List<ShowResDto> toDtoList(List<Show> shows);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "movie", ignore = true)
-    @Mapping(target = "auditorium", ignore = true)
+    @Mapping(target = "movie", source = "movie")
+    @Mapping(target = "auditorium", source = "auditorium")
+    @Mapping(target = "startTime", source = "reqDto.startTime")
+    @Mapping(target = "endTime", source = "reqDto.endTime")
+    @Mapping(target = "pricePerTicket", source = "reqDto.pricePerTicket")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "totalCapacity", source = "capacity")
+    @Mapping(target = "availableCapacity", source = "capacity")
     @Mapping(target = "bookings", ignore = true)
-    @Mapping(target = "status", ignore = true)
-    @Mapping(target = "totalCapacity", ignore = true)
-    @Mapping(target = "availableCapacity", ignore = true)
     @Mapping(target = "deleted", ignore = true)
-    void updateEntityFromDto(ShowReqDto reqDto, @MappingTarget Show show);
+    void updateEntityFromDto(
+            ShowReqDto reqDto,
+            Movie movie,
+            Auditorium auditorium,
+            ShowStatus status,
+            Integer capacity,
+            @MappingTarget Show show);
 }

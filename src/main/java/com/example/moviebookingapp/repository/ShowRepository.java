@@ -26,4 +26,21 @@ public interface ShowRepository extends JpaRepository<Show, Long>, JpaSpecificat
             @Param("status") ShowStatus status,
             @Param("bufferedStart") OffsetDateTime bufferedStart,
             @Param("bufferedEnd") OffsetDateTime bufferedEnd);
+
+    @Query("""
+        select case when count(scheduledShow) > 0 then true else false end
+        from Show scheduledShow
+        where scheduledShow.id <> :showId
+          and scheduledShow.auditorium.id = :auditoriumId
+          and scheduledShow.status = :status
+          and scheduledShow.deleted = false
+          and scheduledShow.startTime < :bufferedEnd
+          and scheduledShow.endTime > :bufferedStart
+        """)
+    boolean existsOverlappingScheduledShowExcludingId(
+            @Param("showId") Long showId,
+            @Param("auditoriumId") Long auditoriumId,
+            @Param("status") ShowStatus status,
+            @Param("bufferedStart") OffsetDateTime bufferedStart,
+            @Param("bufferedEnd") OffsetDateTime bufferedEnd);
 }

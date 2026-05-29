@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -242,5 +243,111 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.detail").value("Show not found with ID: 99"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/shows/99"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateShowReturnsOkAndUpdatedResource() throws Exception {
+
+        ShowResDto updatedShow = new ShowResDto(
+                1L,
+                100L,
+                "Gladiator",
+                10L,
+                "Filmhouse Lekki",
+                20L,
+                "Screen 1",
+                OffsetDateTime.parse("2026-06-01T19:00:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                120,
+                120,
+                new BigDecimal("4000.00"),
+                ShowStatus.SCHEDULED);
+
+        when(showService.updateShow(any(Long.class), any(ShowReqDto.class))).thenReturn(updatedShow);
+
+        String requestBody = """
+        {
+          "movieId": 100,
+          "auditoriumId": 20,
+          "startTime": "2026-06-01T19:00:00+01:00",
+          "endTime": "2026-06-01T21:15:00+01:00",
+          "pricePerTicket": 4000.00
+        }
+        """;
+
+        mockMvc.perform(put("/api/v1/shows/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.movieId").value(100))
+                .andExpect(jsonPath("$.auditoriumId").value(20))
+                .andExpect(jsonPath("$.startTime").value("2026-06-01T19:00:00+01:00"))
+                .andExpect(jsonPath("$.endTime").value("2026-06-01T21:15:00+01:00"))
+                .andExpect(jsonPath("$.pricePerTicket").value(4000.00))
+                .andExpect(jsonPath("$.status").value("SCHEDULED"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateShowReturnsProblemDetailsWhenShowDoesNotExist() throws Exception {
+
+        when(showService.updateShow(any(Long.class), any(ShowReqDto.class)))
+                .thenThrow(new ShowNotFoundException("Show not found with ID: 99"));
+
+        String requestBody = """
+        {
+          "movieId": 100,
+          "auditoriumId": 20,
+          "startTime": "2026-06-01T19:00:00+01:00",
+          "endTime": "2026-06-01T21:15:00+01:00",
+          "pricePerTicket": 4000.00
+        }
+        """;
+
+        mockMvc.perform(put("/api/v1/shows/99")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/show-not-found"))
+                .andExpect(jsonPath("$.title").value("Show not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Show not found with ID: 99"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/shows/99"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateShowReturnsProblemDetailsWhenScheduleConflicts() throws Exception {
+
+        when(showService.updateShow(any(Long.class), any(ShowReqDto.class)))
+                .thenThrow(new ShowScheduleConflictException(
+                        "Auditorium already has a scheduled show in this time window"));
+
+        String requestBody = """
+        {
+          "movieId": 100,
+          "auditoriumId": 20,
+          "startTime": "2026-06-01T20:10:00+01:00",
+          "endTime": "2026-06-01T22:00:00+01:00",
+          "pricePerTicket": 4000.00
+        }
+        """;
+
+        mockMvc.perform(put("/api/v1/shows/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/show-schedule-conflict"))
+                .andExpect(jsonPath("$.title").value("Show schedule conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Auditorium already has a scheduled show in this time window"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/shows/1"));
     }
 }

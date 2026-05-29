@@ -317,6 +317,119 @@ class ShowServiceTest {
                 .hasMessage("Show not found with ID: 99");
     }
 
+    @Test
+    void updateShowUpdatesExistingShowAndReturnsResponse() {
+
+        ShowReqDto request = new ShowReqDto(
+                100L,
+                20L,
+                OffsetDateTime.parse("2026-06-01T19:00:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                new BigDecimal("4000.00"));
+
+        Show existingShow = new Show();
+        Movie movie = movie("Gladiator");
+        Auditorium auditorium = auditorium("Screen 1", 120);
+
+        Show savedShow = new Show();
+
+        ShowResDto response = new ShowResDto(
+                1L,
+                100L,
+                "Gladiator",
+                10L,
+                "Filmhouse Lekki",
+                20L,
+                "Screen 1",
+                OffsetDateTime.parse("2026-06-01T19:00:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                120,
+                120,
+                new BigDecimal("4000.00"),
+                ShowStatus.SCHEDULED);
+
+        when(showRepository.findById(1L)).thenReturn(Optional.of(existingShow));
+        when(movieRepository.findById(100L)).thenReturn(Optional.of(movie));
+        when(auditoriumRepository.findById(20L)).thenReturn(Optional.of(auditorium));
+        when(showRepository.existsOverlappingScheduledShowExcludingId(
+                        1L,
+                        20L,
+                        ShowStatus.SCHEDULED,
+                        OffsetDateTime.parse("2026-06-01T18:45:00+01:00"),
+                        OffsetDateTime.parse("2026-06-01T21:30:00+01:00")))
+                .thenReturn(false);
+        when(showRepository.save(existingShow)).thenReturn(savedShow);
+        when(showMapper.toDto(savedShow)).thenReturn(response);
+
+        ShowResDto result = showService.updateShow(1L, request);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(showMapper).updateEntityFromDto(request, movie, auditorium, ShowStatus.SCHEDULED, 120, existingShow);
+        verify(showRepository).save(existingShow);
+    }
+
+    @Test
+    void updateShowReturnsNotFoundWhenShowDoesNotExist() {
+
+        ShowReqDto request = new ShowReqDto(
+                100L,
+                20L,
+                OffsetDateTime.parse("2026-06-01T19:00:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                new BigDecimal("4000.00"));
+
+        when(showRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> showService.updateShow(99L, request))
+                .isInstanceOf(ShowNotFoundException.class)
+                .hasMessage("Show not found with ID: 99");
+
+        verify(movieRepository, never()).findById(any(Long.class));
+        verify(auditoriumRepository, never()).findById(any(Long.class));
+        verify(showRepository, never()).save(any(Show.class));
+    }
+
+    @Test
+    void updateShowRejectsOverlappingScheduledShowWithCleanupBuffer() {
+
+        ShowReqDto request = new ShowReqDto(
+                100L,
+                20L,
+                OffsetDateTime.parse("2026-06-01T20:10:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T22:00:00+01:00"),
+                new BigDecimal("4000.00"));
+
+        Show existingShow = new Show();
+        Movie movie = movie("Gladiator");
+        Auditorium auditorium = auditorium("Screen 1", 120);
+
+        when(showRepository.findById(1L)).thenReturn(Optional.of(existingShow));
+        when(movieRepository.findById(100L)).thenReturn(Optional.of(movie));
+        when(auditoriumRepository.findById(20L)).thenReturn(Optional.of(auditorium));
+        when(showRepository.existsOverlappingScheduledShowExcludingId(
+                        1L,
+                        20L,
+                        ShowStatus.SCHEDULED,
+                        OffsetDateTime.parse("2026-06-01T19:55:00+01:00"),
+                        OffsetDateTime.parse("2026-06-01T22:15:00+01:00")))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> showService.updateShow(1L, request))
+                .isInstanceOf(ShowScheduleConflictException.class)
+                .hasMessage("Auditorium already has a scheduled show in this time window");
+
+        verify(showMapper, never())
+                .updateEntityFromDto(
+                        any(ShowReqDto.class),
+                        any(Movie.class),
+                        any(Auditorium.class),
+                        any(ShowStatus.class),
+                        any(Integer.class),
+                        any(Show.class));
+        verify(showRepository, never()).save(any(Show.class));
+    }
+
     private Movie movie(String title) {
 
         Movie movie = new Movie();

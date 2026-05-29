@@ -115,6 +115,41 @@ public class ShowService {
         return showMapper.toDto(savedShow);
     }
 
+    @Transactional
+    public ShowResDto updateShow(Long id, ShowReqDto reqDto) {
+
+        if (id == null) {
+            throw new IllegalArgumentException("Show ID cannot be null");
+        }
+
+        ShowReqDto validatedReqDto = Objects.requireNonNull(reqDto, "Show request cannot be null");
+        Long movieId = Objects.requireNonNull(validatedReqDto.movieId(), "Movie ID cannot be null");
+        Long auditoriumId = Objects.requireNonNull(validatedReqDto.auditoriumId(), "Auditorium ID cannot be null");
+
+        validateScheduleWindow(validatedReqDto);
+
+        Show show = showRepository
+                .findById(id)
+                .orElseThrow(() -> new ShowNotFoundException("Show not found with ID: " + id));
+
+        Movie movie = movieRepository
+                .findById(movieId)
+                .orElseThrow(() -> new MovieNotFoundException("Movie not found with ID: " + movieId));
+
+        Auditorium auditorium = auditoriumRepository
+                .findById(auditoriumId)
+                .orElseThrow(() -> new AuditoriumNotFoundException("Auditorium not found with ID: " + auditoriumId));
+
+        validateNoScheduleConflictForUpdate(id, auditoriumId, validatedReqDto.startTime(), validatedReqDto.endTime());
+
+        showMapper.updateEntityFromDto(
+                validatedReqDto, movie, auditorium, ShowStatus.SCHEDULED, auditorium.getCapacity(), show);
+
+        Show savedShow = showRepository.save(show);
+
+        return showMapper.toDto(savedShow);
+    }
+
     private void validateScheduleWindow(ShowReqDto reqDto) {
 
         if (!reqDto.endTime().isAfter(reqDto.startTime())) {
@@ -129,6 +164,18 @@ public class ShowService {
 
         if (showRepository.existsOverlappingScheduledShow(
                 auditoriumId, ShowStatus.SCHEDULED, bufferedStart, bufferedEnd)) {
+            throw new ShowScheduleConflictException("Auditorium already has a scheduled show in this time window");
+        }
+    }
+
+    private void validateNoScheduleConflictForUpdate(
+            Long showId, Long auditoriumId, OffsetDateTime startTime, OffsetDateTime endTime) {
+
+        OffsetDateTime bufferedStart = startTime.minusMinutes(CLEANUP_BUFFER_MINUTES);
+        OffsetDateTime bufferedEnd = endTime.plusMinutes(CLEANUP_BUFFER_MINUTES);
+
+        if (showRepository.existsOverlappingScheduledShowExcludingId(
+                showId, auditoriumId, ShowStatus.SCHEDULED, bufferedStart, bufferedEnd)) {
             throw new ShowScheduleConflictException("Auditorium already has a scheduled show in this time window");
         }
     }

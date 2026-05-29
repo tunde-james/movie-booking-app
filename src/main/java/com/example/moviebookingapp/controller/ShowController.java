@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,5 +57,14 @@ public class ShowController {
                 URI.create("/api/v1/shows/" + showResDto.id()), "Created show location must not be null");
 
         return ResponseEntity.created(location).body(showResDto);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ShowResDto> updateShow(@PathVariable Long id, @Valid @RequestBody ShowReqDto reqDto) {
+
+        ShowResDto show = showService.updateShow(id, reqDto);
+
+        return ResponseEntity.ok(show);
     }
 }

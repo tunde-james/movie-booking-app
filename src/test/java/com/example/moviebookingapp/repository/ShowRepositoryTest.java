@@ -184,6 +184,61 @@ class ShowRepositoryTest {
         assertThat(result).extracting(Show::getId).containsExactly(matchingShow.getId());
     }
 
+    @Test
+    void existsOverlappingScheduledShowExcludingIdIgnoresCurrentShow() {
+
+        Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
+        Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
+
+        Show existingShow = showRepository.saveAndFlush(show(
+                movie,
+                auditorium,
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                ShowStatus.SCHEDULED));
+
+        boolean exists = showRepository.existsOverlappingScheduledShowExcludingId(
+                existingShow.getId(),
+                auditorium.getId(),
+                ShowStatus.SCHEDULED,
+                OffsetDateTime.parse("2026-06-01T18:15:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:00:00+01:00"));
+
+        assertThat(exists).isFalse();
+    }
+
+    @Test
+    void existsOverlappingScheduledShowExcludingIdReturnsTrueForAnotherOverlappingShow() {
+
+        Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
+        Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
+
+        Show currentShow = showRepository.saveAndFlush(show(
+                movie,
+                auditorium,
+                OffsetDateTime.parse("2026-06-01T12:00:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T14:00:00+01:00"),
+                ShowStatus.SCHEDULED));
+
+        showRepository.saveAndFlush(show(
+                movie,
+                auditorium,
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                ShowStatus.SCHEDULED));
+
+        boolean exists = showRepository.existsOverlappingScheduledShowExcludingId(
+                currentShow.getId(),
+                auditorium.getId(),
+                ShowStatus.SCHEDULED,
+                OffsetDateTime.parse("2026-06-01T18:15:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:00:00+01:00"));
+
+        assertThat(exists).isTrue();
+    }
+
     private Show show(
             Movie movie, Auditorium auditorium, OffsetDateTime startTime, OffsetDateTime endTime, ShowStatus status) {
 
