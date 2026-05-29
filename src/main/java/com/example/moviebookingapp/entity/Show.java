@@ -1,7 +1,7 @@
 package com.example.moviebookingapp.entity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,9 +14,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Min;
 
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.TimeZoneColumn;
+import org.hibernate.annotations.TimeZoneStorage;
+import org.hibernate.annotations.TimeZoneStorageType;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,30 +34,36 @@ import com.example.moviebookingapp.enums.ShowStatus;
 @NoArgsConstructor
 public class Show extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "movie_id", nullable = false)
     private Movie movie;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cinema_id", nullable = false)
-    private Cinema cinema;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "auditorium_id", nullable = false)
+    private Auditorium auditorium;
 
-    @Column(name = "show_time", nullable = false)
-    private LocalDateTime showTime;
+    @TimeZoneStorage(TimeZoneStorageType.COLUMN)
+    @TimeZoneColumn(name = "start_time_offset_seconds")
+    @Column(name = "start_time", nullable = false)
+    private OffsetDateTime startTime;
+
+    @TimeZoneStorage(TimeZoneStorageType.COLUMN)
+    @TimeZoneColumn(name = "end_time_offset_seconds")
+    @Column(name = "end_time", nullable = false)
+    private OffsetDateTime endTime;
+
+    @Column(name = "total_capacity", nullable = false)
+    private Integer totalCapacity;
+
+    @Column(name = "available_capacity", nullable = false)
+    private Integer availableCapacity;
+
+    @Column(name = "price_per_ticket", nullable = false, precision = 10, scale = 2)
+    private BigDecimal pricePerTicket;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private ShowStatus status;
-
-    @Column(name = "total_seats", nullable = false)
-    private Integer totalSeats;
-
-    @Column(name = "available_seats", nullable = false)
-    @Min(value = 0, message = "Available seats cannot be negative")
-    private Integer availableSeats;
-
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
 
     @OneToMany(mappedBy = "show", fetch = FetchType.LAZY)
     private List<Booking> bookings = new ArrayList<>();

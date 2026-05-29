@@ -98,4 +98,44 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
     }
+
+    @ExceptionHandler(InvalidShowScheduleException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidShowScheduleException(
+            InvalidShowScheduleException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.badRequest(
+                request.getRequestURI(), "invalid-show-schedule", "Invalid show schedule", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.BAD_REQUEST, problemDetail);
+    }
+
+    @ExceptionHandler(ShowScheduleConflictException.class)
+    public ResponseEntity<ProblemDetail> handleShowScheduleConflictException(
+            ShowScheduleConflictException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "show-schedule-conflict", "Show schedule conflict", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(ShowBookingConflictException.class)
+    public ResponseEntity<ProblemDetail> handleShowBookingConflictException(
+            ShowBookingConflictException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "show-booking-conflict", "Show booking conflict", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(ShowNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleShowNotFoundException(
+            ShowNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "show-not-found", "Show not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
 }

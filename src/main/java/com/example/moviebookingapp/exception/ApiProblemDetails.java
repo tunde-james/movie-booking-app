@@ -51,7 +51,21 @@ public final class ApiProblemDetails {
 
     @SuppressWarnings("null")
     public static ProblemDetail notFound(String instance, String type, String title, String detail) {
+
         ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+
+        problemDetail.setType(URI.create(PROBLEM_BASE_URL + "/" + type));
+        problemDetail.setTitle(title);
+        problemDetail.setDetail(detail);
+        problemDetail.setInstance(URI.create(instance));
+
+        return problemDetail;
+    }
+
+    @SuppressWarnings("null")
+    public static ProblemDetail badRequest(String instance, String type, String title, String detail) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
 
         problemDetail.setType(URI.create(PROBLEM_BASE_URL + "/" + type));
         problemDetail.setTitle(title);
