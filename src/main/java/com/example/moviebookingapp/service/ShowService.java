@@ -150,6 +150,22 @@ public class ShowService {
         return showMapper.toDto(savedShow);
     }
 
+    @Transactional
+    public void deleteShow(Long id) {
+
+        if (id == null) {
+            throw new IllegalArgumentException("Show ID cannot be null");
+        }
+
+        Show show = showRepository
+                .findById(id)
+                .orElseThrow(() -> new ShowNotFoundException("Show not found with ID: " + id));
+
+        show.setDeleted(true);
+
+        showRepository.save(show);
+    }
+
     private void validateScheduleWindow(ShowReqDto reqDto) {
 
         if (!reqDto.endTime().isAfter(reqDto.startTime())) {

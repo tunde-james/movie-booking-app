@@ -430,6 +430,33 @@ class ShowServiceTest {
         verify(showRepository, never()).save(any(Show.class));
     }
 
+    @Test
+    void deleteShowSoftDeletesExistingShow() {
+
+        Show show = new Show();
+
+        when(showRepository.findById(1L)).thenReturn(Optional.of(show));
+        when(showRepository.save(show)).thenReturn(show);
+
+        showService.deleteShow(1L);
+
+        assertThat(show.isDeleted()).isTrue();
+
+        verify(showRepository).save(show);
+    }
+
+    @Test
+    void deleteShowReturnsNotFoundWhenShowDoesNotExist() {
+
+        when(showRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> showService.deleteShow(99L))
+                .isInstanceOf(ShowNotFoundException.class)
+                .hasMessage("Show not found with ID: 99");
+
+        verify(showRepository, never()).save(any(Show.class));
+    }
+
     private Movie movie(String title) {
 
         Movie movie = new Movie();

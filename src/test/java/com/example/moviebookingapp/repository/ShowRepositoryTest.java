@@ -239,6 +239,34 @@ class ShowRepositoryTest {
         assertThat(exists).isTrue();
     }
 
+    @Test
+    void softDeletedShowsAreExcludedFromNormalReads() {
+
+        Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
+        Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
+
+        Show visibleShow = showRepository.saveAndFlush(show(
+                movie,
+                auditorium,
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                ShowStatus.SCHEDULED));
+
+        Show deletedShow = show(
+                movie,
+                auditorium,
+                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T23:00:00+01:00"),
+                ShowStatus.SCHEDULED);
+        deletedShow.setDeleted(true);
+        showRepository.saveAndFlush(deletedShow);
+
+        List<Show> result = showRepository.findAll();
+
+        assertThat(result).extracting(Show::getId).containsExactly(visibleShow.getId());
+    }
+
     private Show show(
             Movie movie, Auditorium auditorium, OffsetDateTime startTime, OffsetDateTime endTime, ShowStatus status) {
 

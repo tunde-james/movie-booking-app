@@ -1,8 +1,12 @@
 package com.example.moviebookingapp.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -349,5 +353,36 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.detail").value("Auditorium already has a scheduled show in this time window"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/shows/1"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void deleteShowReturnsNoContent() throws Exception {
+
+        doNothing().when(showService).deleteShow(1L);
+
+        mockMvc.perform(delete("/api/v1/shows/1").with(csrf()))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(showService).deleteShow(1L);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void deleteShowReturnsProblemDetailsWhenShowDoesNotExist() throws Exception {
+
+        doThrow(new ShowNotFoundException("Show not found with ID: 99"))
+                .when(showService)
+                .deleteShow(99L);
+
+        mockMvc.perform(delete("/api/v1/shows/99").with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/show-not-found"))
+                .andExpect(jsonPath("$.title").value("Show not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Show not found with ID: 99"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/shows/99"));
     }
 }
