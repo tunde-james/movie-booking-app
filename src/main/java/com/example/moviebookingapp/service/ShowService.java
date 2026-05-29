@@ -18,6 +18,7 @@ import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.AuditoriumNotFoundException;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
 import com.example.moviebookingapp.exception.MovieNotFoundException;
+import com.example.moviebookingapp.exception.ShowNotFoundException;
 import com.example.moviebookingapp.exception.ShowScheduleConflictException;
 import com.example.moviebookingapp.mapper.ShowMapper;
 import com.example.moviebookingapp.repository.AuditoriumRepository;
@@ -70,6 +71,20 @@ public class ShowService {
         List<Show> shows = showRepository.findAll(specification);
 
         return showMapper.toDtoList(shows);
+    }
+
+    @Transactional(readOnly = true)
+    public ShowResDto getShowById(Long id) {
+
+        if (id == null) {
+            throw new IllegalArgumentException("Show ID cannot be null");
+        }
+
+        Show show = showRepository
+                .findById(id)
+                .orElseThrow(() -> new ShowNotFoundException("Show not found with ID: " + id));
+
+        return showMapper.toDto(show);
     }
 
     @Transactional

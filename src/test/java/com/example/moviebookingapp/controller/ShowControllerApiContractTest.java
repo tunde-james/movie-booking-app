@@ -31,6 +31,7 @@ import com.example.moviebookingapp.dtos.show.ShowSearchCriteria;
 import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
+import com.example.moviebookingapp.exception.ShowNotFoundException;
 import com.example.moviebookingapp.exception.ShowScheduleConflictException;
 import com.example.moviebookingapp.service.ShowService;
 
@@ -192,5 +193,54 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$[0].cinemaId").value(10))
                 .andExpect(jsonPath("$[0].auditoriumId").value(20))
                 .andExpect(jsonPath("$[0].status").value("SCHEDULED"));
+    }
+
+    @Test
+    @WithMockUser
+    void getShowByIdReturnsOkAndShowDetails() throws Exception {
+
+        ShowResDto show = new ShowResDto(
+                1L,
+                100L,
+                "Gladiator",
+                10L,
+                "Filmhouse Lekki",
+                20L,
+                "Screen 1",
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                120,
+                120,
+                new BigDecimal("3500.00"),
+                ShowStatus.SCHEDULED);
+
+        when(showService.getShowById(1L)).thenReturn(show);
+
+        mockMvc.perform(get("/api/v1/shows/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.movieId").value(100))
+                .andExpect(jsonPath("$.movieTitle").value("Gladiator"))
+                .andExpect(jsonPath("$.cinemaId").value(10))
+                .andExpect(jsonPath("$.cinemaName").value("Filmhouse Lekki"))
+                .andExpect(jsonPath("$.auditoriumId").value(20))
+                .andExpect(jsonPath("$.auditoriumName").value("Screen 1"))
+                .andExpect(jsonPath("$.status").value("SCHEDULED"));
+    }
+
+    @Test
+    @WithMockUser
+    void getShowByIdReturnsProblemDetailsWhenShowDoesNotExist() throws Exception {
+
+        when(showService.getShowById(99L)).thenThrow(new ShowNotFoundException("Show not found with ID: 99"));
+
+        mockMvc.perform(get("/api/v1/shows/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/show-not-found"))
+                .andExpect(jsonPath("$.title").value("Show not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Show not found with ID: 99"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/shows/99"));
     }
 }

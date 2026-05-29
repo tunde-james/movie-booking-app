@@ -118,4 +118,14 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
     }
+
+    @ExceptionHandler(ShowNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleShowNotFoundException(
+            ShowNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "show-not-found", "Show not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
 }

@@ -38,6 +38,7 @@ import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.AuditoriumNotFoundException;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
 import com.example.moviebookingapp.exception.MovieNotFoundException;
+import com.example.moviebookingapp.exception.ShowNotFoundException;
 import com.example.moviebookingapp.exception.ShowScheduleConflictException;
 import com.example.moviebookingapp.mapper.ShowMapper;
 import com.example.moviebookingapp.repository.AuditoriumRepository;
@@ -276,6 +277,44 @@ class ShowServiceTest {
         assertThat(result).containsExactly(response);
 
         verify(showRepository).findAll(ArgumentMatchers.<Specification<Show>>any());
+    }
+
+    @Test
+    void getShowByIdReturnsShowWhenItExists() {
+
+        Show show = new Show();
+
+        ShowResDto response = new ShowResDto(
+                1L,
+                100L,
+                "Gladiator",
+                10L,
+                "Filmhouse Lekki",
+                20L,
+                "Screen 1",
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                120,
+                120,
+                new BigDecimal("3500.00"),
+                ShowStatus.SCHEDULED);
+
+        when(showRepository.findById(1L)).thenReturn(Optional.of(show));
+        when(showMapper.toDto(show)).thenReturn(response);
+
+        ShowResDto result = showService.getShowById(1L);
+
+        assertThat(result).isEqualTo(response);
+    }
+
+    @Test
+    void getShowByIdReturnsNotFoundWhenShowDoesNotExist() {
+
+        when(showRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> showService.getShowById(99L))
+                .isInstanceOf(ShowNotFoundException.class)
+                .hasMessage("Show not found with ID: 99");
     }
 
     private Movie movie(String title) {
