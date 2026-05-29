@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 import jakarta.persistence.EntityManager;
 
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.domain.Specification;
 
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MySQLContainer;
@@ -29,6 +31,7 @@ import com.example.moviebookingapp.enums.Language;
 import com.example.moviebookingapp.enums.MovieRating;
 import com.example.moviebookingapp.enums.MovieStatus;
 import com.example.moviebookingapp.enums.ShowStatus;
+import com.example.moviebookingapp.repository.specification.ShowSpecifications;
 
 @SuppressWarnings("null")
 @DataJpaTest
@@ -59,7 +62,7 @@ class ShowRepositoryTest {
     void saveAndFindByIdPreservesShowOffsetDateTimes() {
 
         Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
-        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
         Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
 
         OffsetDateTime startTime = OffsetDateTime.parse("2026-06-01T18:30:00+01:00");
@@ -79,7 +82,7 @@ class ShowRepositoryTest {
     void existsOverlappingScheduledShowReturnsTrueWhenBufferedWindowOverlapsExistingShow() {
 
         Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
-        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
         Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
 
         showRepository.saveAndFlush(show(
@@ -102,7 +105,7 @@ class ShowRepositoryTest {
     void existsOverlappingScheduledShowReturnsFalseWhenCleanupBufferIsRespected() {
 
         Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
-        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
         Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
 
         showRepository.saveAndFlush(show(
@@ -125,7 +128,7 @@ class ShowRepositoryTest {
     void cancelledShowsDoNotBlockScheduling() {
 
         Movie movie = movieRepository.saveAndFlush(movie("Gladiator"));
-        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki"));
+        Cinema cinema = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
         Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, "Screen 1"));
 
         showRepository.saveAndFlush(show(
@@ -142,6 +145,43 @@ class ShowRepositoryTest {
                 OffsetDateTime.parse("2026-06-01T21:00:00+01:00"));
 
         assertThat(exists).isFalse();
+    }
+
+    @Test
+    void findAllWithSearchSpecificationsReturnsMatchingShows() {
+
+        Movie gladiator = movieRepository.saveAndFlush(movie("Gladiator"));
+        Movie interstellar = movieRepository.saveAndFlush(movie("Interstellar"));
+
+        Cinema filmhouseLekki = cinemaRepository.saveAndFlush(cinema("Filmhouse Lekki", "Lagos"));
+        Cinema genesisAbuja = cinemaRepository.saveAndFlush(cinema("Genesis Deluxe Abuja", "Abuja"));
+
+        Auditorium screenOne = auditoriumRepository.saveAndFlush(auditorium(filmhouseLekki, "Screen 1"));
+        Auditorium imaxHall = auditoriumRepository.saveAndFlush(auditorium(genesisAbuja, "IMAX Hall"));
+
+        Show matchingShow = showRepository.saveAndFlush(show(
+                gladiator,
+                screenOne,
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                ShowStatus.SCHEDULED));
+
+        showRepository.saveAndFlush(show(
+                interstellar,
+                imaxHall,
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T21:00:00+01:00"),
+                ShowStatus.SCHEDULED));
+
+        Specification<Show> specification = ShowSpecifications.movieTitleContains("glad")
+                .and(ShowSpecifications.cinemaNameContains("filmhouse"))
+                .and(ShowSpecifications.cinemaCityEquals("lagos"))
+                .and(ShowSpecifications.startsOnDate(LocalDate.of(2026, 6, 1)))
+                .and(ShowSpecifications.hasStatus(ShowStatus.SCHEDULED));
+
+        List<Show> result = showRepository.findAll(specification);
+
+        assertThat(result).extracting(Show::getId).containsExactly(matchingShow.getId());
     }
 
     private Show show(
@@ -174,12 +214,12 @@ class ShowRepositoryTest {
         return movie;
     }
 
-    private Cinema cinema(String name) {
+    private Cinema cinema(String name, String city) {
 
         Cinema cinema = new Cinema();
         cinema.setName(name);
         cinema.setAddress("Admiralty Way");
-        cinema.setCity("Lagos");
+        cinema.setCity(city);
         return cinema;
     }
 

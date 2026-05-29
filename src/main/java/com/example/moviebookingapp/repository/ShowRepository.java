@@ -3,13 +3,14 @@ package com.example.moviebookingapp.repository;
 import java.time.OffsetDateTime;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.example.moviebookingapp.entity.Show;
 import com.example.moviebookingapp.enums.ShowStatus;
 
-public interface ShowRepository extends JpaRepository<Show, Long> {
+public interface ShowRepository extends JpaRepository<Show, Long>, JpaSpecificationExecutor<Show> {
 
     @Query("""
             select case when count(scheduledShow) > 0 then true else false end

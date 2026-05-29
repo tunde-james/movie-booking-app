@@ -8,17 +8,23 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.jpa.domain.Specification;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.example.moviebookingapp.dtos.show.ShowReqDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
+import com.example.moviebookingapp.dtos.show.ShowSearchCriteria;
 import com.example.moviebookingapp.entity.Auditorium;
 import com.example.moviebookingapp.entity.Cinema;
 import com.example.moviebookingapp.entity.Movie;
@@ -236,6 +242,40 @@ class ShowServiceTest {
                         any(ShowStatus.class),
                         any(Integer.class));
         verify(showRepository, never()).save(any(Show.class));
+    }
+
+    @Test
+    void searchShowsUsesSpecificationsAndMapsResults() {
+
+        ShowSearchCriteria criteria = new ShowSearchCriteria(
+                100L, "gladiator", 10L, "filmhouse", "lagos", 20L, LocalDate.of(2026, 6, 1), ShowStatus.SCHEDULED);
+
+        Show show = new Show();
+
+        ShowResDto response = new ShowResDto(
+                1L,
+                100L,
+                "Gladiator",
+                10L,
+                "Filmhouse Lekki",
+                20L,
+                "Screen 1",
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                120,
+                120,
+                new BigDecimal("3500.00"),
+                ShowStatus.SCHEDULED);
+
+        when(showRepository.findAll(ArgumentMatchers.<Specification<Show>>any()))
+                .thenReturn(List.of(show));
+        when(showMapper.toDtoList(List.of(show))).thenReturn(List.of(response));
+
+        List<ShowResDto> result = showService.searchShows(criteria);
+
+        assertThat(result).containsExactly(response);
+
+        verify(showRepository).findAll(ArgumentMatchers.<Specification<Show>>any());
     }
 
     private Movie movie(String title) {

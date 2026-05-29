@@ -1,13 +1,16 @@
 package com.example.moviebookingapp.service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Objects;
 
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.moviebookingapp.dtos.show.ShowReqDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
+import com.example.moviebookingapp.dtos.show.ShowSearchCriteria;
 import com.example.moviebookingapp.entity.Auditorium;
 import com.example.moviebookingapp.entity.Movie;
 import com.example.moviebookingapp.entity.Show;
@@ -20,6 +23,7 @@ import com.example.moviebookingapp.mapper.ShowMapper;
 import com.example.moviebookingapp.repository.AuditoriumRepository;
 import com.example.moviebookingapp.repository.MovieRepository;
 import com.example.moviebookingapp.repository.ShowRepository;
+import com.example.moviebookingapp.repository.specification.ShowSpecifications;
 
 @Service
 public class ShowService {
@@ -40,6 +44,32 @@ public class ShowService {
         this.movieRepository = movieRepository;
         this.auditoriumRepository = auditoriumRepository;
         this.showMapper = showMapper;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShowResDto> searchShows(ShowSearchCriteria criteria) {
+
+        Long movieId = criteria == null ? null : criteria.movieId();
+        Long cinemaId = criteria == null ? null : criteria.cinemaId();
+        Long auditoriumId = criteria == null ? null : criteria.auditoriumId();
+        java.time.LocalDate date = criteria == null ? null : criteria.date();
+        ShowStatus status = criteria == null ? null : criteria.status();
+        String movieTitle = criteria == null ? null : criteria.movieTitle();
+        String cinemaName = criteria == null ? null : criteria.cinemaName();
+        String city = criteria == null ? null : criteria.city();
+
+        Specification<Show> specification = ShowSpecifications.hasMovieId(movieId)
+                .and(ShowSpecifications.movieTitleContains(movieTitle))
+                .and(ShowSpecifications.hasCinemaId(cinemaId))
+                .and(ShowSpecifications.cinemaNameContains(cinemaName))
+                .and(ShowSpecifications.cinemaCityEquals(city))
+                .and(ShowSpecifications.hasAuditoriumId(auditoriumId))
+                .and(ShowSpecifications.startsOnDate(date))
+                .and(ShowSpecifications.hasStatus(status));
+
+        List<Show> shows = showRepository.findAll(specification);
+
+        return showMapper.toDtoList(shows);
     }
 
     @Transactional
@@ -82,7 +112,8 @@ public class ShowService {
         OffsetDateTime bufferedStart = startTime.minusMinutes(CLEANUP_BUFFER_MINUTES);
         OffsetDateTime bufferedEnd = endTime.plusMinutes(CLEANUP_BUFFER_MINUTES);
 
-        if (showRepository.existsOverlappingScheduledShow(auditoriumId, ShowStatus.SCHEDULED, bufferedStart, bufferedEnd)) {
+        if (showRepository.existsOverlappingScheduledShow(
+                auditoriumId, ShowStatus.SCHEDULED, bufferedStart, bufferedEnd)) {
             throw new ShowScheduleConflictException("Auditorium already has a scheduled show in this time window");
         }
     }

@@ -3,6 +3,7 @@ package com.example.moviebookingapp.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import com.example.moviebookingapp.dtos.show.ShowReqDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
+import com.example.moviebookingapp.dtos.show.ShowSearchCriteria;
 import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
 import com.example.moviebookingapp.exception.InvalidShowScheduleException;
@@ -153,5 +156,41 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.detail").value("Auditorium already has a scheduled show in this time window"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/shows"));
+    }
+
+    @Test
+    @WithMockUser
+    void getShowsSupportsOptionalFilters() throws Exception {
+
+        ShowResDto show = new ShowResDto(
+                1L,
+                100L,
+                "Gladiator",
+                10L,
+                "Filmhouse Lekki",
+                20L,
+                "Screen 1",
+                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
+                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                120,
+                120,
+                new BigDecimal("3500.00"),
+                ShowStatus.SCHEDULED);
+
+        when(showService.searchShows(any(ShowSearchCriteria.class))).thenReturn(List.of(show));
+
+        mockMvc.perform(get("/api/v1/shows")
+                        .param("movieTitle", "gladiator")
+                        .param("cinemaName", "filmhouse")
+                        .param("city", "lagos")
+                        .param("date", "2026-06-01")
+                        .param("status", "SCHEDULED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].movieId").value(100))
+                .andExpect(jsonPath("$[0].movieTitle").value("Gladiator"))
+                .andExpect(jsonPath("$[0].cinemaId").value(10))
+                .andExpect(jsonPath("$[0].auditoriumId").value(20))
+                .andExpect(jsonPath("$[0].status").value("SCHEDULED"));
     }
 }
