@@ -1,5 +1,5 @@
 # Movie Booking App Context
-Last updated: 2026-05-18
+Last updated: 2026-05-31
 
 This project is a Java Spring Boot movie booking application.
 
@@ -7,9 +7,10 @@ This project is a Java Spring Boot movie booking application.
 
 V1 lets:
 - admins create movies, cinemas, auditoriums, and shows
-- customers browse movies
-- customers view showtimes
-- customers create, confirm, and cancel bookings
+- customers and guests browse movies
+- customers and guests view showtimes
+- customers and guests create bookings
+- customers confirm and cancel bookings using booking details or account access
 
 Out of scope for v1:
 - payments
@@ -32,7 +33,9 @@ Out of scope for v1:
 
 **Admin**: A user who can manage movies, cinemas, auditoriums, and shows.
 
-**Customer**: A user who can browse movies, view showtimes, and create bookings.
+**Customer**: A registered user who can browse movies, view showtimes, create bookings, and manage bookings tied to their account.
+
+**Guest**: An unregistered customer who can browse movies, view showtimes, and create a booking by providing checkout contact details.
 
 ## Shared Entity Fields
 
@@ -60,7 +63,8 @@ Delete operations should soft-delete records instead of physically removing them
 - A Show belongs to one Movie.
 - A Show happens in one Auditorium.
 - A Show's Cinema is derived through `Show -> Auditorium -> Cinema`.
-- A Booking belongs to one Customer.
+- A Booking may belong to one registered Customer/User.
+- A guest Booking is not tied to a registered User account.
 - A Booking belongs to one Show.
 
 ## Access Model
@@ -69,6 +73,7 @@ Public users can:
 - list movies
 - view movie details
 - list showtimes
+- create guest bookings
 
 Customers can:
 - create bookings
@@ -196,28 +201,51 @@ Example:
 - A show ending at `12:00` allows the next show to start at `12:15`
 - A show ending at `12:00` rejects another show starting at `12:10`
 
+Show endTime may be derived from:
+- show startTime
+- movie durationInMinutes
+
+The scheduling conflict check still uses:
+- startTime
+- calculated or stored endTime
+- 15-minute cleanup buffer
+
 Cancelled shows do not block scheduling.
 
 ## Booking Model
+
+A Booking may belong to a registered Customer/User, or it may be created by a guest.
+
+Guest booking requires:
+- firstName
+- lastName
+- email
+- phoneNumber optional
+
+Registered customer booking can use account details, but the booking should still snapshot contact details used for that booking.
+
+Booking contains:
+- user, optional
+- firstName
+- lastName
+- email
+- phoneNumber, optional
+- show
+- ticketQuantity
+- unitPrice
+- totalPrice
+- status
 
 V1 booking statuses:
 - `PENDING`
 - `CONFIRMED`
 - `CANCELLED`
 
-A customer creates a booking as `PENDING`.
+A customer or guest creates a booking as `PENDING`.
 
 A separate confirmation action changes the booking to `CONFIRMED` and reduces show availability.
 
 A cancellation action changes the booking to `CANCELLED`. If the booking was already `CONFIRMED`, cancellation restores show availability.
-
-Booking contains:
-- customer
-- show
-- ticketQuantity
-- unitPrice
-- totalPrice
-- status
 
 Pricing is snapshotted when the booking is created as `PENDING`.
 
@@ -291,7 +319,7 @@ V1 blocks deleting:
 - a Cinema if it has active Auditoriums or active Shows through those Auditoriums
 - an Auditorium if it has active Shows
 - a Show if it has `PENDING` or `CONFIRMED` bookings
-- a Customer/User if they have `PENDING` or `CONFIRMED` bookings
+- a Customer/User if they have `PENDING` or `CONFIRMED` account bookings
 
 An active Show means:
 - status is `SCHEDULED`

@@ -9,6 +9,5 @@ import com.example.moviebookingapp.enums.BookingStatus;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    boolean existsByShowIdAndBookingStatusInAndDeletedFalse(
-            Long showId, Collection<BookingStatus> bookingStatuses);
+    boolean existsByShowIdAndStatusInAndDeletedFalse(Long showId, Collection<BookingStatus> statuses);
 }

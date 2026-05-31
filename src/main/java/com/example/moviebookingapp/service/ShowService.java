@@ -215,7 +215,7 @@ public class ShowService {
 
     private void ensureShowHasNoActiveBookings(Long showId) {
 
-        if (bookingRepository.existsByShowIdAndBookingStatusInAndDeletedFalse(showId, ACTIVE_BOOKING_STATUSES)) {
+        if (bookingRepository.existsByShowIdAndStatusInAndDeletedFalse(showId, ACTIVE_BOOKING_STATUSES)) {
             throw new ShowBookingConflictException(SHOW_HAS_ACTIVE_BOOKINGS_MESSAGE);
         }
     }

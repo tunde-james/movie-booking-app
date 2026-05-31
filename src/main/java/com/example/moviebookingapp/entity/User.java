@@ -10,6 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 import org.hibernate.annotations.SQLRestriction;
 
@@ -31,6 +33,10 @@ public class User extends BaseEntity {
     private String username;
 
     @Column(nullable = false, unique = true, length = 100)
+    @NotBlank(message = "Email is required")
+    @Email(
+            regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
+            message = "Please provide a valid email address")
     private String email;
 
     @Column(nullable = false, length = 255)

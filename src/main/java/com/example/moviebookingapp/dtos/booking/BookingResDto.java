@@ -10,8 +10,13 @@ import com.example.moviebookingapp.enums.BookingStatus;
 public record BookingResDto(
         Long id,
         UserResDto user,
+        String firstName,
+        String lastName,
+        String email,
+        String phoneNumber,
         ShowResDto show,
-        Integer numberOfSeats,
+        Integer ticketQuantity,
+        BigDecimal unitPrice,
         BigDecimal totalPrice,
-        BookingStatus bookingStatus,
+        BookingStatus status,
         LocalDateTime bookingTime) {}
