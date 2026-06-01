@@ -117,7 +117,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void createBookingReturnsConflictWhenShowIsNotBookable() throws Exception {
 
         BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
@@ -138,7 +138,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void createBookingReturnsConflictWhenShowCapacityIsInsufficient() throws Exception {
 
         BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 5);
@@ -159,7 +159,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void createBookingReturnsBadRequestWhenBookingRequestIsInvalid() throws Exception {
 
         BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
@@ -180,7 +180,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void createBookingReturnsNotFoundWhenUserDoesNotExist() throws Exception {
         BookingReqDto reqDto = new BookingReqDto(99L, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
 
@@ -200,7 +200,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void createBookingReturnsValidationErrorWhenGuestEmailIsBlank() throws Exception {
         String requestBody = """
             {
@@ -229,7 +229,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void confirmBookingReturnsOkAndConfirmedBooking() throws Exception {
 
         BookingResDto response = new BookingResDto(
@@ -261,7 +261,7 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void confirmBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
         when(bookingService.confirmBooking(999L))
@@ -277,9 +277,9 @@ class BookingControllerApiContractTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "USER")
     void confirmBookingReturnsBadRequestWhenBookingIsNotPending() throws Exception {
-        
+
         when(bookingService.confirmBooking(100L))
                 .thenThrow(new InvalidBookingRequestException("Only pending bookings can be confirmed"));
 
@@ -290,5 +290,69 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.detail").value("Only pending bookings can be confirmed"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/confirm"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void cancelBookingReturnsOkAndCancelledBooking() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null);
+
+        when(bookingService.cancelBooking(100L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.firstName").value("Ada"))
+                .andExpect(jsonPath("$.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.ticketQuantity").value(2))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(bookingService).cancelBooking(100L);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void cancelBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
+
+        when(bookingService.cancelBooking(999L))
+                .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 999L).with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Booking not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Booking not found with ID: 999"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/999/cancel"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void cancelBookingReturnsBadRequestWhenBookingCannotBeCancelled() throws Exception {
+        
+        when(bookingService.cancelBooking(100L))
+                .thenThrow(new InvalidBookingRequestException("Booking is already cancelled"));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L).with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Invalid booking request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Booking is already cancelled"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/cancel"));
     }
 }

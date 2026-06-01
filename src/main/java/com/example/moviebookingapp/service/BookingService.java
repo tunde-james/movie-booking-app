@@ -114,6 +114,36 @@ public class BookingService {
         return bookingMapper.toDto(savedBooking);
     }
 
+    @Transactional
+    public BookingResDto cancelBooking(Long bookingId) {
+
+        Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
+
+        Booking booking = bookingRepository
+                .findById(validatedBookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new InvalidBookingRequestException("Booking is already cancelled");
+        }
+
+        Show show = booking.getShow();
+
+        if (!show.getStartTime().isAfter(OffsetDateTime.now())) {
+            throw new InvalidBookingRequestException("Cannot cancel booking after show has started");
+        }
+
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            show.setAvailableCapacity(show.getAvailableCapacity() + booking.getTicketQuantity());
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        return bookingMapper.toDto(savedBooking);
+    }
+
     private BookingReqDto normalizeBookingRequest(BookingReqDto reqDto) {
 
         String firstName = requireText(reqDto.firstName(), "First name is required");

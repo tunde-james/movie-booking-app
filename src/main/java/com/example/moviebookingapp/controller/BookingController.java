@@ -43,4 +43,12 @@ public class BookingController {
 
         return ResponseEntity.ok(booking);
     }
+
+    @PostMapping("/{bookingId}/cancel")
+    public ResponseEntity<BookingResDto> cancelBooking(@PathVariable Long bookingId) {
+
+        BookingResDto booking = bookingService.cancelBooking(bookingId);
+
+        return ResponseEntity.ok(booking);
+    }
 }

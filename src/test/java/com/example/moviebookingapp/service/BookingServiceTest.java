@@ -427,7 +427,7 @@ class BookingServiceTest {
 
     @Test
     void confirmBookingRejectsWhenShowHasAlreadyStarted() {
-        
+
         Long bookingId = 100L;
 
         Show show = new Show();
@@ -448,6 +448,149 @@ class BookingServiceTest {
 
         assertThat(show.getAvailableCapacity()).isEqualTo(50);
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
+
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void cancelBookingCancelsPendingBookingWithoutChangingShowCapacity() {
+
+        Long bookingId = 100L;
+
+        Show show = new Show();
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(50);
+
+        Booking booking = new Booking();
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(booking)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.cancelBooking(bookingId);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(show.getAvailableCapacity()).isEqualTo(50);
+
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void cancelBookingCancelsConfirmedBookingAndRestoresShowCapacity() {
+
+        Long bookingId = 100L;
+
+        Show show = new Show();
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(48);
+
+        Booking booking = new Booking();
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(booking)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.cancelBooking(bookingId);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(show.getAvailableCapacity()).isEqualTo(50);
+
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void cancelBookingReturnsNotFoundWhenBookingDoesNotExist() {
+
+        Long bookingId = 999L;
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId))
+                .isInstanceOf(BookingNotFoundException.class)
+                .hasMessage("Booking not found with ID: 999");
+
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void cancelBookingRejectsAlreadyCancelledBooking() {
+
+        Long bookingId = 100L;
+
+        Booking booking = new Booking();
+        booking.setStatus(BookingStatus.CANCELLED);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId))
+                .isInstanceOf(InvalidBookingRequestException.class)
+                .hasMessage("Booking is already cancelled");
+
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void cancelBookingRejectsWhenShowHasAlreadyStarted() {
+        
+        Long bookingId = 100L;
+
+        Show show = new Show();
+        show.setStartTime(OffsetDateTime.now().minusMinutes(1));
+        show.setAvailableCapacity(48);
+
+        Booking booking = new Booking();
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId))
+                .isInstanceOf(InvalidBookingRequestException.class)
+                .hasMessage("Cannot cancel booking after show has started");
+
+        assertThat(show.getAvailableCapacity()).isEqualTo(48);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
 
         verify(bookingRepository, never()).save(any(Booking.class));
     }
