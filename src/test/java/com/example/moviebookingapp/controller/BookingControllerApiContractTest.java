@@ -1,9 +1,11 @@
 package com.example.moviebookingapp.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,12 +24,18 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.example.moviebookingapp.dtos.booking.BookingReqDto;
 import com.example.moviebookingapp.dtos.booking.BookingResDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
 import com.example.moviebookingapp.enums.BookingStatus;
 import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
+import com.example.moviebookingapp.exception.InsufficientShowCapacityException;
+import com.example.moviebookingapp.exception.InvalidBookingRequestException;
+import com.example.moviebookingapp.exception.ShowNotBookableException;
+import com.example.moviebookingapp.exception.UserNotFoundException;
 import com.example.moviebookingapp.service.BookingService;
 
 @SuppressWarnings("null")
@@ -37,6 +45,9 @@ class BookingControllerApiContractTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockitoBean
     private BookingService bookingService;
@@ -101,5 +112,117 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.unitPrice").value(3500.00))
                 .andExpect(jsonPath("$.totalPrice").value(7000.00))
                 .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createBookingReturnsConflictWhenShowIsNotBookable() throws Exception {
+
+        BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
+
+        when(bookingService.createBooking(any(BookingReqDto.class)))
+                .thenThrow(new ShowNotBookableException("This show is sold out"));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reqDto)))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Show not bookable"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("This show is sold out"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createBookingReturnsConflictWhenShowCapacityIsInsufficient() throws Exception {
+
+        BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 5);
+
+        when(bookingService.createBooking(any(BookingReqDto.class)))
+                .thenThrow(new InsufficientShowCapacityException("Not enough seats available for this show"));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reqDto)))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Insufficient show capacity"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Not enough seats available for this show"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createBookingReturnsBadRequestWhenBookingRequestIsInvalid() throws Exception {
+
+        BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
+
+        when(bookingService.createBooking(any(BookingReqDto.class)))
+                .thenThrow(new InvalidBookingRequestException("Ticket quantity must be greater than zero"));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reqDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Invalid booking request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Ticket quantity must be greater than zero"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createBookingReturnsNotFoundWhenUserDoesNotExist() throws Exception {
+        BookingReqDto reqDto = new BookingReqDto(99L, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
+
+        when(bookingService.createBooking(any(BookingReqDto.class)))
+                .thenThrow(new UserNotFoundException("User not found with ID: 99"));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reqDto)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("User not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("User not found with ID: 99"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createBookingReturnsValidationErrorWhenGuestEmailIsBlank() throws Exception {
+        String requestBody = """
+            {
+              "firstName": "Ada",
+              "lastName": "Lovelace",
+              "email": "",
+              "showId": 10,
+              "ticketQuantity": 2
+            }
+            """;
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("One or more fields are invalid."))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings"))
+                .andExpect(jsonPath("$.errors").isArray())
+                .andExpect(jsonPath("$.errors[?(@.field == 'email')]").exists());
+
+        verifyNoInteractions(bookingService);
     }
 }

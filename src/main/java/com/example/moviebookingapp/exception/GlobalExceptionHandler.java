@@ -138,4 +138,44 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
     }
+
+    @ExceptionHandler(ShowNotBookableException.class)
+    public ResponseEntity<ProblemDetail> handleShowNotBookableException(
+            ShowNotBookableException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "show-not-bookable", "Show not bookable", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(InsufficientShowCapacityException.class)
+    public ResponseEntity<ProblemDetail> handleInsufficientShowCapacityException(
+            InsufficientShowCapacityException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "insufficient-show-capacity", "Insufficient show capacity", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(InvalidBookingRequestException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidBookingRequestException(
+            InvalidBookingRequestException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.badRequest(
+                request.getRequestURI(), "invalid-booking-request", "Invalid booking request", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.BAD_REQUEST, problemDetail);
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleUserNotFoundException(
+            UserNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "user-not-found", "User not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
 }
