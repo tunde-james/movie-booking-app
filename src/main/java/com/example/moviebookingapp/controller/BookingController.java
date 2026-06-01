@@ -6,6 +6,7 @@ import java.util.Objects;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +25,14 @@ public class BookingController {
 
     public BookingController(BookingService bookingService) {
         this.bookingService = bookingService;
+    }
+
+    @GetMapping("/{bookingId}")
+    public ResponseEntity<BookingResDto> getBookingById(@PathVariable Long bookingId) {
+
+        BookingResDto booking = bookingService.getBookingById(bookingId);
+
+        return ResponseEntity.ok(booking);
     }
 
     @PostMapping

@@ -571,7 +571,7 @@ class BookingServiceTest {
 
     @Test
     void cancelBookingRejectsWhenShowHasAlreadyStarted() {
-        
+
         Long bookingId = 100L;
 
         Show show = new Show();
@@ -593,5 +593,49 @@ class BookingServiceTest {
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
 
         verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void getBookingByIdReturnsBookingWhenItExists() {
+
+        Long bookingId = 100L;
+
+        Booking booking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(bookingMapper.toDto(booking)).thenReturn(response);
+
+        BookingResDto result = bookingService.getBookingById(bookingId);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(bookingMapper).toDto(booking);
+    }
+
+    @Test
+    void getBookingByIdReturnsNotFoundWhenBookingDoesNotExist() {
+        Long bookingId = 999L;
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> bookingService.getBookingById(bookingId))
+                .isInstanceOf(BookingNotFoundException.class)
+                .hasMessage("Booking not found with ID: 999");
+
+        verify(bookingMapper, never()).toDto(any(Booking.class));
     }
 }

@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -343,7 +344,7 @@ class BookingControllerApiContractTest {
     @Test
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsBadRequestWhenBookingCannotBeCancelled() throws Exception {
-        
+
         when(bookingService.cancelBooking(100L))
                 .thenThrow(new InvalidBookingRequestException("Booking is already cancelled"));
 
@@ -354,5 +355,54 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.detail").value("Booking is already cancelled"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/cancel"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void getBookingByIdReturnsOkAndBooking() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null);
+
+        when(bookingService.getBookingById(100L)).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/bookings/{bookingId}", 100L))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.firstName").value("Ada"))
+                .andExpect(jsonPath("$.lastName").value("Lovelace"))
+                .andExpect(jsonPath("$.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.ticketQuantity").value(2))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        verify(bookingService).getBookingById(100L);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void getBookingByIdReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
+        
+        when(bookingService.getBookingById(999L))
+                .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
+
+        mockMvc.perform(get("/api/v1/bookings/{bookingId}", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Booking not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Booking not found with ID: 999"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/999"));
     }
 }

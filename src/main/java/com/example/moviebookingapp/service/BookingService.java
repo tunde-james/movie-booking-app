@@ -144,6 +144,18 @@ public class BookingService {
         return bookingMapper.toDto(savedBooking);
     }
 
+    @Transactional(readOnly = true)
+    public BookingResDto getBookingById(Long bookingId) {
+
+        Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
+
+        Booking booking = bookingRepository
+                .findById(validatedBookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
+
+        return bookingMapper.toDto(booking);
+    }
+
     private BookingReqDto normalizeBookingRequest(BookingReqDto reqDto) {
 
         String firstName = requireText(reqDto.firstName(), "First name is required");
