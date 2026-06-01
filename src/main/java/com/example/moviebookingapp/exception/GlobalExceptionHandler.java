@@ -178,4 +178,14 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
     }
+
+    @ExceptionHandler(BookingNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleBookingNotFoundException(
+            BookingNotFoundException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.notFound(
+                request.getRequestURI(), "booking-not-found", "Booking not found", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
 }

@@ -6,6 +6,7 @@ import java.util.Objects;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,5 +34,13 @@ public class BookingController {
         URI location = Objects.requireNonNull(URI.create("/api/v1/bookings/" + booking.id()), "");
 
         return ResponseEntity.created(location).body(booking);
+    }
+
+    @PostMapping("/{bookingId}/confirm")
+    public ResponseEntity<BookingResDto> confirmBooking(@PathVariable Long bookingId) {
+
+        BookingResDto booking = bookingService.confirmBooking(bookingId);
+
+        return ResponseEntity.ok(booking);
     }
 }

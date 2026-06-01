@@ -14,6 +14,7 @@ import com.example.moviebookingapp.entity.Show;
 import com.example.moviebookingapp.entity.User;
 import com.example.moviebookingapp.enums.BookingStatus;
 import com.example.moviebookingapp.enums.ShowStatus;
+import com.example.moviebookingapp.exception.BookingNotFoundException;
 import com.example.moviebookingapp.exception.InsufficientShowCapacityException;
 import com.example.moviebookingapp.exception.InvalidBookingRequestException;
 import com.example.moviebookingapp.exception.ShowNotBookableException;
@@ -48,8 +49,8 @@ public class BookingService {
     @Transactional
     public BookingResDto createBooking(BookingReqDto reqDto) {
 
-        BookingReqDto validatedReqDto = normalizeBookingRequest(
-                Objects.requireNonNull(reqDto, "Booking request cannot be null"));
+        BookingReqDto validatedReqDto =
+                normalizeBookingRequest(Objects.requireNonNull(reqDto, "Booking request cannot be null"));
 
         Long userId = validatedReqDto.userId();
         Long showId = Objects.requireNonNull(validatedReqDto.showId(), "Show ID cannot be null");
@@ -74,31 +75,7 @@ public class BookingService {
                 .findById(showId)
                 .orElseThrow(() -> new ShowNotFoundException("Show not found with ID: " + showId));
 
-        boolean showStartsInFuture = show.getStartTime().isAfter(OffsetDateTime.now());
-
-        if (show.getStatus() == ShowStatus.CANCELLED) {
-            throw new ShowNotBookableException("This show has been cancelled");
-        }
-
-        if (show.getStatus() == ShowStatus.COMPLETED) {
-            throw new ShowNotBookableException("This show has already ended");
-        }
-
-        if (show.getStatus() != ShowStatus.SCHEDULED) {
-            throw new ShowNotBookableException("This show is not available for booking");
-        }
-
-        if (!showStartsInFuture) {
-            throw new ShowNotBookableException("This show has already started");
-        }
-
-        if (show.getAvailableCapacity() <= 0) {
-            throw new ShowNotBookableException("This show is sold out");
-        }
-
-        if (ticketQuantity > show.getAvailableCapacity()) {
-            throw new InsufficientShowCapacityException("Not enough seats available for this show");
-        }
+        ensureShowCanAcceptBooking(show, ticketQuantity);
 
         BigDecimal unitPrice = show.getPricePerTicket();
         BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(ticketQuantity.longValue()));
@@ -112,12 +89,38 @@ public class BookingService {
         return bookingMapper.toDto(savedBooking);
     }
 
+    @Transactional
+    public BookingResDto confirmBooking(Long bookingId) {
+
+        Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
+
+        Booking booking = bookingRepository
+                .findById(validatedBookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new InvalidBookingRequestException("Only pending bookings can be confirmed");
+        }
+
+        Show show = booking.getShow();
+
+        ensureShowCanAcceptBooking(show, booking.getTicketQuantity());
+
+        show.setAvailableCapacity(show.getAvailableCapacity() - booking.getTicketQuantity());
+        booking.setStatus(BookingStatus.CONFIRMED);
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        return bookingMapper.toDto(savedBooking);
+    }
+
     private BookingReqDto normalizeBookingRequest(BookingReqDto reqDto) {
 
         String firstName = requireText(reqDto.firstName(), "First name is required");
         String lastName = requireText(reqDto.lastName(), "Last name is required");
         String email = requireText(reqDto.email(), "Email is required");
-        String phoneNumber = reqDto.phoneNumber() == null ? null : reqDto.phoneNumber().trim();
+        String phoneNumber =
+                reqDto.phoneNumber() == null ? null : reqDto.phoneNumber().trim();
 
         return new BookingReqDto(
                 reqDto.userId(),
@@ -136,5 +139,34 @@ public class BookingService {
         }
 
         return value.trim();
+    }
+
+    private void ensureShowCanAcceptBooking(Show show, Integer ticketQuantity) {
+
+        Integer seatsRequested = Objects.requireNonNull(ticketQuantity, "Ticket quantity cannot be null");
+
+        if (show.getStatus() == ShowStatus.CANCELLED) {
+            throw new ShowNotBookableException("This show has been cancelled");
+        }
+
+        if (show.getStatus() == ShowStatus.COMPLETED) {
+            throw new ShowNotBookableException("This show has already ended");
+        }
+
+        if (show.getStatus() != ShowStatus.SCHEDULED) {
+            throw new ShowNotBookableException("This show is not available for booking");
+        }
+
+        if (!show.getStartTime().isAfter(OffsetDateTime.now())) {
+            throw new ShowNotBookableException("This show has already started");
+        }
+
+        if (show.getAvailableCapacity() <= 0) {
+            throw new ShowNotBookableException("This show is sold out");
+        }
+
+        if (seatsRequested > show.getAvailableCapacity()) {
+            throw new InsufficientShowCapacityException("Not enough seats available for this show");
+        }
     }
 }

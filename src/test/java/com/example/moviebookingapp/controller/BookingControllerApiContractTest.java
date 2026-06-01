@@ -1,6 +1,7 @@
 package com.example.moviebookingapp.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -31,6 +32,7 @@ import com.example.moviebookingapp.dtos.booking.BookingResDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
 import com.example.moviebookingapp.enums.BookingStatus;
 import com.example.moviebookingapp.enums.ShowStatus;
+import com.example.moviebookingapp.exception.BookingNotFoundException;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
 import com.example.moviebookingapp.exception.InsufficientShowCapacityException;
 import com.example.moviebookingapp.exception.InvalidBookingRequestException;
@@ -224,5 +226,69 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.errors[?(@.field == 'email')]").exists());
 
         verifyNoInteractions(bookingService);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void confirmBookingReturnsOkAndConfirmedBooking() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null);
+
+        when(bookingService.confirmBooking(100L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.firstName").value("Ada"))
+                .andExpect(jsonPath("$.email").value("ada@example.com"))
+                .andExpect(jsonPath("$.ticketQuantity").value(2))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        verify(bookingService).confirmBooking(100L);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void confirmBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
+
+        when(bookingService.confirmBooking(999L))
+                .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 999L).with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Booking not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Booking not found with ID: 999"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/999/confirm"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void confirmBookingReturnsBadRequestWhenBookingIsNotPending() throws Exception {
+        
+        when(bookingService.confirmBooking(100L))
+                .thenThrow(new InvalidBookingRequestException("Only pending bookings can be confirmed"));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L).with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Invalid booking request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Only pending bookings can be confirmed"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/confirm"));
     }
 }
