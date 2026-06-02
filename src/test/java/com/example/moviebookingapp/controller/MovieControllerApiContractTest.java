@@ -54,13 +54,15 @@ class MovieControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void addMovieReturnsCreatedResourceAndLocationHeader() throws Exception {
 
+        LocalDate releaseDate = LocalDate.now().plusMonths(1);
+
         MovieResDto createdMovie = new MovieResDto(
                 1L,
                 "Gladiator",
                 "A historical action drama.",
                 Genre.ACTION,
                 155,
-                LocalDate.of(2026, 6, 1),
+                releaseDate,
                 Language.ENGLISH,
                 MovieRating.PG_13,
                 MovieStatus.COMING_SOON,
@@ -74,13 +76,13 @@ class MovieControllerApiContractTest {
                   "description": "A historical action drama.",
                   "genre": "ACTION",
                   "durationInMinutes": 155,
-                  "releaseDate": "2026-06-01",
+                  "releaseDate": "%s",
                   "language": "ENGLISH",
                   "rating": "PG_13",
                   "movieStatus": "COMING_SOON",
                   "posterUrl": "https://example.com/gladiator.jpg"
                 }
-                """;
+                """.formatted(releaseDate);
 
         mockMvc.perform(post("/api/v1/movies")
                         .with(csrf())
@@ -96,13 +98,16 @@ class MovieControllerApiContractTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void updateMovieReturnsOkAndUpdatedResource() throws Exception {
+
+        LocalDate releaseDate = LocalDate.now().plusMonths(1);
+
         MovieResDto updatedMovie = new MovieResDto(
                 1L,
                 "Gladiator Updated",
                 "Updated description.",
                 Genre.ACTION,
                 160,
-                LocalDate.of(2026, 6, 1),
+                releaseDate,
                 Language.ENGLISH,
                 MovieRating.PG_13,
                 MovieStatus.COMING_SOON,
@@ -116,13 +121,13 @@ class MovieControllerApiContractTest {
               "description": "Updated description.",
               "genre": "ACTION",
               "durationInMinutes": 160,
-              "releaseDate": "2026-06-01",
+              "releaseDate": "%s",
               "language": "ENGLISH",
               "rating": "PG_13",
               "movieStatus": "COMING_SOON",
               "posterUrl": "https://example.com/gladiator-updated.jpg"
             }
-            """;
+            """.formatted(releaseDate);
 
         mockMvc.perform(put("/api/v1/movies/1")
                         .with(csrf())
@@ -178,6 +183,7 @@ class MovieControllerApiContractTest {
     @Test
     @WithMockUser
     void getMovieByIdReturnsOkAndMovieDetails() throws Exception {
+
         MovieResDto movie = new MovieResDto(
                 1L,
                 "Interstellar",
@@ -202,6 +208,7 @@ class MovieControllerApiContractTest {
     @Test
     @WithMockUser
     void getMovieByIdReturnsProblemDetailsWhenMovieDoesNotExist() throws Exception {
+
         when(movieService.getMovieById(99L)).thenThrow(new MovieNotFoundException("Movie not found with ID: 99"));
 
         mockMvc.perform(get("/api/v1/movies/99"))
@@ -217,6 +224,7 @@ class MovieControllerApiContractTest {
     @Test
     @WithMockUser
     void getMoviesSupportsOptionalFilters() throws Exception {
+
         MovieResDto movie = new MovieResDto(
                 1L,
                 "Interstellar",
@@ -246,6 +254,7 @@ class MovieControllerApiContractTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void deleteMovieReturnsNoContent() throws Exception {
+        
         doNothing().when(movieService).deleteMovie(1L);
 
         mockMvc.perform(delete("/api/v1/movies/1").with(csrf()))

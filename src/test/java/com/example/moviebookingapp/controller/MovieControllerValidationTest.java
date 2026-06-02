@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -38,6 +40,7 @@ class MovieControllerValidationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void addMovieReturnsProblemDetailsWhenRequestIsInvalid() throws Exception {
+        
         String invalidRequest = """
                 {
                   "title": "",
@@ -63,19 +66,22 @@ class MovieControllerValidationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void addMovieReturnsProblemDetailsWhenMovieAlreadyExists() throws Exception {
+
+        LocalDate releaseDate = LocalDate.now().plusMonths(1);
+
         String validRequest = """
             {
               "title": "Gladiator",
               "description": "A historical action drama.",
               "genre": "ACTION",
               "durationInMinutes": 155,
-              "releaseDate": "2026-06-01",
+              "releaseDate": "%s",
               "language": "ENGLISH",
               "rating": "PG_13",
               "movieStatus": "COMING_SOON",
               "posterUrl": "https://example.com/gladiator.jpg"
             }
-            """;
+            """.formatted(releaseDate);
 
         when(movieService.addMovie(any(MovieReqDto.class)))
                 .thenThrow(new MovieAlreadyExistsException(
