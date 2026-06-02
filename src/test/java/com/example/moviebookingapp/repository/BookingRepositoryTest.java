@@ -201,7 +201,7 @@ class BookingRepositoryTest {
     }
 
     private Show savedShow(String movieTitle, String cinemaName, String auditoriumName) {
-        
+
         Movie movie = movieRepository.saveAndFlush(movie(movieTitle));
         Cinema cinema = cinemaRepository.saveAndFlush(cinema(cinemaName, "Lagos"));
         Auditorium auditorium = auditoriumRepository.saveAndFlush(auditorium(cinema, auditoriumName));

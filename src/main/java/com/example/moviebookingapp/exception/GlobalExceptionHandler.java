@@ -10,6 +10,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -187,5 +188,18 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(), "booking-not-found", "Booking not found", ex.getMessage());
 
         return ApiProblemDetails.response(HttpStatus.NOT_FOUND, problemDetail);
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ProblemDetail> handleOptimisticLockingFailureException(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(),
+                "concurrent-update-conflict",
+                "Concurrent update conflict",
+                "The resource was changed by another request. Please try again.");
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
     }
 }

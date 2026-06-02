@@ -20,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.moviebookingapp.dtos.booking.BookingReqDto;
 import com.example.moviebookingapp.dtos.booking.BookingResDto;
 import com.example.moviebookingapp.dtos.show.ShowResDto;
+import com.example.moviebookingapp.entity.Booking;
 import com.example.moviebookingapp.enums.BookingStatus;
 import com.example.moviebookingapp.enums.ShowStatus;
 import com.example.moviebookingapp.exception.BookingNotFoundException;
@@ -393,7 +395,7 @@ class BookingControllerApiContractTest {
     @Test
     @WithMockUser(roles = "USER")
     void getBookingByIdReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
-        
+
         when(bookingService.getBookingById(999L))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
@@ -404,5 +406,37 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.detail").value("Booking not found with ID: 999"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/bookings/999"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void confirmBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
+
+        when(bookingService.confirmBooking(100L))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Concurrent update conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("The resource was changed by another request. Please try again."))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/confirm"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void cancelBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
+        
+        when(bookingService.cancelBooking(100L))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Concurrent update conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("The resource was changed by another request. Please try again."))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/cancel"));
     }
 }
