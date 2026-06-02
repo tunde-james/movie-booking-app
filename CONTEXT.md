@@ -69,17 +69,19 @@ Delete operations should soft-delete records instead of physically removing them
 
 ## Access Model
 
-Public users can:
+Public guests can:
 - list movies
 - view movie details
 - list showtimes
-- create guest bookings
+- create guest bookings by providing checkout contact details
 
 Customers can:
 - create bookings
+- view their own bookings
 - confirm their own pending bookings
 - cancel their own bookings before show start time
-- view their own bookings
+
+Guest booking confirmation and cancellation require a booking reference or verification flow before production use.
 
 Admins can:
 - create, update, and delete movies
@@ -277,6 +279,17 @@ When a `CONFIRMED` booking is cancelled:
 
 Bookings cannot be cancelled after the show start time in v1.
 
+Guest bookings are allowed in v1.
+
+A guest booking is identified by booking details plus guest contact information, not by a registered account.
+
+For production, guest booking lookup, confirmation, and cancellation must require a secure verification flow, such as:
+- booking reference plus email
+- one-time email link
+- short-lived confirmation token
+
+The API must not expose a broad public booking list searchable only by email.
+
 ## Search And API Shape
 
 Movie list/search:
@@ -309,6 +322,31 @@ Show identity:
 `GET /api/v1/shows/{showId}`
 
 Filtering and search use query parameters, not separate endpoints.
+
+Booking create:
+
+`POST /api/v1/bookings`
+
+Guest users may create bookings without signing in.
+
+Booking identity:
+
+`GET /api/v1/bookings/{bookingId}`
+
+Booking confirmation:
+
+`POST /api/v1/bookings/{bookingId}/confirm`
+
+Booking cancellation:
+
+`POST /api/v1/bookings/{bookingId}/cancel`
+
+Before authentication is implemented, booking read/confirm/cancel endpoints exist for workflow development and tests.
+
+After authentication is implemented:
+- registered customers should use account ownership checks
+- guests should use a booking-reference or token verification flow
+- public `GET /api/v1/bookings` should not be added without access control
 
 ## Delete Rules
 
@@ -399,3 +437,6 @@ Database migrations will use Flyway. Hibernate `ddl-auto=update` is temporary du
 - Should uniqueness checks ignore soft-deleted records?
 - What should the first authentication implementation use: JWT, session auth, or basic seeded users first?
 - Should show completion be automatic through a scheduled job or manually triggered by admins?
+- What exact verification flow should guest users use to view, confirm, and cancel bookings?
+- Should guest booking confirmation happen through email link, booking reference, or payment checkout?
+- Should admins have a separate booking-management endpoint after auth is implemented?
