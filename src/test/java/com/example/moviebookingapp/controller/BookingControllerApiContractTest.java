@@ -58,7 +58,7 @@ class BookingControllerApiContractTest {
     private BookingService bookingService;
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "USER")
     void createBookingReturnsCreatedResourceAndLocationHeader() throws Exception {
 
         ShowResDto show = new ShowResDto(
@@ -427,7 +427,7 @@ class BookingControllerApiContractTest {
     @Test
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
-        
+
         when(bookingService.cancelBooking(100L))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
 
