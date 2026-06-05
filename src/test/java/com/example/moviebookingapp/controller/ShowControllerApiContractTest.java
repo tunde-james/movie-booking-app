@@ -56,6 +56,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void addShowReturnsCreatedResourceAndLocationHeader() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.plusHours(2);
+
         ShowResDto createdShow = new ShowResDto(
                 1L,
                 100L,
@@ -64,8 +67,8 @@ class ShowControllerApiContractTest {
                 "Filmhouse Lekki",
                 20L,
                 "Screen 1",
-                OffsetDateTime.parse("2026-06-01T18:30:00+01:00"),
-                OffsetDateTime.parse("2026-06-01T20:45:00+01:00"),
+                startTime,
+                endTime,
                 120,
                 120,
                 new BigDecimal("3500.00"),
@@ -74,14 +77,14 @@ class ShowControllerApiContractTest {
         when(showService.addShow(any(ShowReqDto.class))).thenReturn(createdShow);
 
         String requestBody = """
-            {
-              "movieId": 100,
-              "auditoriumId": 20,
-              "startTime": "2026-06-01T18:30:00+01:00",
-              "endTime": "2026-06-01T20:45:00+01:00",
-              "pricePerTicket": 3500.00
-            }
-            """;
+        {
+          "movieId": 100,
+          "auditoriumId": 20,
+          "startTime": "%s",
+          "endTime": "%s",
+          "pricePerTicket": 3500.00
+        }
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(post("/api/v1/shows")
                         .with(csrf())
@@ -96,8 +99,8 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$.cinemaName").value("Filmhouse Lekki"))
                 .andExpect(jsonPath("$.auditoriumId").value(20))
                 .andExpect(jsonPath("$.auditoriumName").value("Screen 1"))
-                .andExpect(jsonPath("$.startTime").value("2026-06-01T18:30:00+01:00"))
-                .andExpect(jsonPath("$.endTime").value("2026-06-01T20:45:00+01:00"))
+                .andExpect(jsonPath("$.startTime").value(startTime.toString()))
+                .andExpect(jsonPath("$.endTime").value(endTime.toString()))
                 .andExpect(jsonPath("$.totalCapacity").value(120))
                 .andExpect(jsonPath("$.availableCapacity").value(120))
                 .andExpect(jsonPath("$.pricePerTicket").value(3500.00))
@@ -108,6 +111,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void addShowReturnsProblemDetailsWhenScheduleIsInvalid() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.minusHours(1);
+
         when(showService.addShow(any(ShowReqDto.class)))
                 .thenThrow(new InvalidShowScheduleException("Show end time must be after start time"));
 
@@ -115,11 +121,11 @@ class ShowControllerApiContractTest {
         {
           "movieId": 100,
           "auditoriumId": 20,
-          "startTime": "2026-06-01T20:45:00+01:00",
-          "endTime": "2026-06-01T18:30:00+01:00",
+          "startTime": "%s",
+          "endTime": "%s",
           "pricePerTicket": 3500.00
         }
-        """;
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(post("/api/v1/shows")
                         .with(csrf())
@@ -138,6 +144,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void addShowReturnsProblemDetailsWhenScheduleConflicts() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.plusHours(2);
+
         when(showService.addShow(any(ShowReqDto.class)))
                 .thenThrow(new ShowScheduleConflictException(
                         "Auditorium already has a scheduled show in this time window"));
@@ -146,11 +155,11 @@ class ShowControllerApiContractTest {
         {
           "movieId": 100,
           "auditoriumId": 20,
-          "startTime": "2026-06-01T20:10:00+01:00",
-          "endTime": "2026-06-01T22:00:00+01:00",
+          "startTime": "%s",
+          "endTime": "%s",
           "pricePerTicket": 3500.00
         }
-        """;
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(post("/api/v1/shows")
                         .with(csrf())
@@ -254,6 +263,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void updateShowReturnsOkAndUpdatedResource() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.plusHours(2);
+
         ShowResDto updatedShow = new ShowResDto(
                 1L,
                 100L,
@@ -262,8 +274,8 @@ class ShowControllerApiContractTest {
                 "Filmhouse Lekki",
                 20L,
                 "Screen 1",
-                OffsetDateTime.parse("2026-06-01T19:00:00+01:00"),
-                OffsetDateTime.parse("2026-06-01T21:15:00+01:00"),
+                startTime,
+                endTime,
                 120,
                 120,
                 new BigDecimal("4000.00"),
@@ -275,11 +287,11 @@ class ShowControllerApiContractTest {
         {
           "movieId": 100,
           "auditoriumId": 20,
-          "startTime": "2026-06-01T19:00:00+01:00",
-          "endTime": "2026-06-01T21:15:00+01:00",
+          "startTime": "%s",
+          "endTime": "%s",
           "pricePerTicket": 4000.00
         }
-        """;
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(put("/api/v1/shows/1")
                         .with(csrf())
@@ -289,8 +301,8 @@ class ShowControllerApiContractTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.movieId").value(100))
                 .andExpect(jsonPath("$.auditoriumId").value(20))
-                .andExpect(jsonPath("$.startTime").value("2026-06-01T19:00:00+01:00"))
-                .andExpect(jsonPath("$.endTime").value("2026-06-01T21:15:00+01:00"))
+                .andExpect(jsonPath("$.startTime").value(startTime.toString()))
+                .andExpect(jsonPath("$.endTime").value(endTime.toString()))
                 .andExpect(jsonPath("$.pricePerTicket").value(4000.00))
                 .andExpect(jsonPath("$.status").value("SCHEDULED"));
     }
@@ -299,6 +311,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void updateShowReturnsProblemDetailsWhenShowDoesNotExist() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.plusHours(2);
+
         when(showService.updateShow(any(Long.class), any(ShowReqDto.class)))
                 .thenThrow(new ShowNotFoundException("Show not found with ID: 99"));
 
@@ -306,11 +321,11 @@ class ShowControllerApiContractTest {
         {
           "movieId": 100,
           "auditoriumId": 20,
-          "startTime": "2026-06-01T19:00:00+01:00",
-          "endTime": "2026-06-01T21:15:00+01:00",
+          "startTime": "%s",
+          "endTime": "%s",
           "pricePerTicket": 4000.00
         }
-        """;
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(put("/api/v1/shows/99")
                         .with(csrf())
@@ -329,6 +344,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void updateShowReturnsProblemDetailsWhenScheduleConflicts() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.plusHours(2);
+
         when(showService.updateShow(any(Long.class), any(ShowReqDto.class)))
                 .thenThrow(new ShowScheduleConflictException(
                         "Auditorium already has a scheduled show in this time window"));
@@ -337,11 +355,11 @@ class ShowControllerApiContractTest {
         {
           "movieId": 100,
           "auditoriumId": 20,
-          "startTime": "2026-06-01T20:10:00+01:00",
-          "endTime": "2026-06-01T22:00:00+01:00",
+          "startTime": "%s",
+          "endTime": "%s",
           "pricePerTicket": 4000.00
         }
-        """;
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(put("/api/v1/shows/1")
                         .with(csrf())
@@ -360,6 +378,9 @@ class ShowControllerApiContractTest {
     @WithMockUser(roles = "ADMIN")
     void updateShowReturnsProblemDetailsWhenShowHasActiveBookings() throws Exception {
 
+        OffsetDateTime startTime = OffsetDateTime.now().plusDays(7).withNano(0);
+        OffsetDateTime endTime = startTime.plusHours(2);
+
         when(showService.updateShow(any(Long.class), any(ShowReqDto.class)))
                 .thenThrow(new ShowBookingConflictException("Show cannot be changed because it has active bookings"));
 
@@ -367,11 +388,11 @@ class ShowControllerApiContractTest {
         {
           "movieId": 100,
           "auditoriumId": 20,
-          "startTime": "2026-06-01T19:00:00+01:00",
-          "endTime": "2026-06-01T21:15:00+01:00",
+          "startTime": "%s",
+          "endTime": "%s",
           "pricePerTicket": 4000.00
         }
-        """;
+        """.formatted(startTime, endTime);
 
         mockMvc.perform(put("/api/v1/shows/1")
                         .with(csrf())

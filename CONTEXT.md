@@ -1,5 +1,5 @@
 # Movie Booking App Context
-Last updated: 2026-05-18
+Last updated: 2026-05-31
 
 This project is a Java Spring Boot movie booking application.
 
@@ -7,9 +7,10 @@ This project is a Java Spring Boot movie booking application.
 
 V1 lets:
 - admins create movies, cinemas, auditoriums, and shows
-- customers browse movies
-- customers view showtimes
-- customers create, confirm, and cancel bookings
+- customers and guests browse movies
+- customers and guests view showtimes
+- customers and guests create bookings
+- customers confirm and cancel bookings using booking details or account access
 
 Out of scope for v1:
 - payments
@@ -32,7 +33,9 @@ Out of scope for v1:
 
 **Admin**: A user who can manage movies, cinemas, auditoriums, and shows.
 
-**Customer**: A user who can browse movies, view showtimes, and create bookings.
+**Customer**: A registered user who can browse movies, view showtimes, create bookings, and manage bookings tied to their account.
+
+**Guest**: An unregistered customer who can browse movies, view showtimes, and create a booking by providing checkout contact details.
 
 ## Shared Entity Fields
 
@@ -60,21 +63,25 @@ Delete operations should soft-delete records instead of physically removing them
 - A Show belongs to one Movie.
 - A Show happens in one Auditorium.
 - A Show's Cinema is derived through `Show -> Auditorium -> Cinema`.
-- A Booking belongs to one Customer.
+- A Booking may belong to one registered Customer/User.
+- A guest Booking is not tied to a registered User account.
 - A Booking belongs to one Show.
 
 ## Access Model
 
-Public users can:
+Public guests can:
 - list movies
 - view movie details
 - list showtimes
+- create guest bookings by providing checkout contact details
 
 Customers can:
 - create bookings
+- view their own bookings
 - confirm their own pending bookings
 - cancel their own bookings before show start time
-- view their own bookings
+
+Guest booking confirmation and cancellation require a booking reference or verification flow before production use.
 
 Admins can:
 - create, update, and delete movies
@@ -196,28 +203,51 @@ Example:
 - A show ending at `12:00` allows the next show to start at `12:15`
 - A show ending at `12:00` rejects another show starting at `12:10`
 
+Show endTime may be derived from:
+- show startTime
+- movie durationInMinutes
+
+The scheduling conflict check still uses:
+- startTime
+- calculated or stored endTime
+- 15-minute cleanup buffer
+
 Cancelled shows do not block scheduling.
 
 ## Booking Model
+
+A Booking may belong to a registered Customer/User, or it may be created by a guest.
+
+Guest booking requires:
+- firstName
+- lastName
+- email
+- phoneNumber optional
+
+Registered customer booking can use account details, but the booking should still snapshot contact details used for that booking.
+
+Booking contains:
+- user, optional
+- firstName
+- lastName
+- email
+- phoneNumber, optional
+- show
+- ticketQuantity
+- unitPrice
+- totalPrice
+- status
 
 V1 booking statuses:
 - `PENDING`
 - `CONFIRMED`
 - `CANCELLED`
 
-A customer creates a booking as `PENDING`.
+A customer or guest creates a booking as `PENDING`.
 
 A separate confirmation action changes the booking to `CONFIRMED` and reduces show availability.
 
 A cancellation action changes the booking to `CANCELLED`. If the booking was already `CONFIRMED`, cancellation restores show availability.
-
-Booking contains:
-- customer
-- show
-- ticketQuantity
-- unitPrice
-- totalPrice
-- status
 
 Pricing is snapshotted when the booking is created as `PENDING`.
 
@@ -248,6 +278,17 @@ When a `CONFIRMED` booking is cancelled:
 - show `availableCapacity` increases by `ticketQuantity`
 
 Bookings cannot be cancelled after the show start time in v1.
+
+Guest bookings are allowed in v1.
+
+A guest booking is identified by booking details plus guest contact information, not by a registered account.
+
+For production, guest booking lookup, confirmation, and cancellation must require a secure verification flow, such as:
+- booking reference plus email
+- one-time email link
+- short-lived confirmation token
+
+The API must not expose a broad public booking list searchable only by email.
 
 ## Search And API Shape
 
@@ -282,6 +323,31 @@ Show identity:
 
 Filtering and search use query parameters, not separate endpoints.
 
+Booking create:
+
+`POST /api/v1/bookings`
+
+Guest users may create bookings without signing in.
+
+Booking identity:
+
+`GET /api/v1/bookings/{bookingId}`
+
+Booking confirmation:
+
+`POST /api/v1/bookings/{bookingId}/confirm`
+
+Booking cancellation:
+
+`POST /api/v1/bookings/{bookingId}/cancel`
+
+Before authentication is implemented, booking read/confirm/cancel endpoints exist for workflow development and tests.
+
+After authentication is implemented:
+- registered customers should use account ownership checks
+- guests should use a booking-reference or token verification flow
+- public `GET /api/v1/bookings` should not be added without access control
+
 ## Delete Rules
 
 Delete operations use soft delete.
@@ -291,7 +357,7 @@ V1 blocks deleting:
 - a Cinema if it has active Auditoriums or active Shows through those Auditoriums
 - an Auditorium if it has active Shows
 - a Show if it has `PENDING` or `CONFIRMED` bookings
-- a Customer/User if they have `PENDING` or `CONFIRMED` bookings
+- a Customer/User if they have `PENDING` or `CONFIRMED` account bookings
 
 An active Show means:
 - status is `SCHEDULED`
@@ -371,3 +437,6 @@ Database migrations will use Flyway. Hibernate `ddl-auto=update` is temporary du
 - Should uniqueness checks ignore soft-deleted records?
 - What should the first authentication implementation use: JWT, session auth, or basic seeded users first?
 - Should show completion be automatic through a scheduled job or manually triggered by admins?
+- What exact verification flow should guest users use to view, confirm, and cancel bookings?
+- Should guest booking confirmation happen through email link, booking reference, or payment checkout?
+- Should admins have a separate booking-management endpoint after auth is implemented?

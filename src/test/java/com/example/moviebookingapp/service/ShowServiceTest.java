@@ -389,7 +389,7 @@ class ShowServiceTest {
         Show existingShow = new Show();
 
         when(showRepository.findById(1L)).thenReturn(Optional.of(existingShow));
-        when(bookingRepository.existsByShowIdAndBookingStatusInAndDeletedFalse(
+        when(bookingRepository.existsByShowIdAndStatusInAndDeletedFalse(
                         1L, List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
                 .thenReturn(true);
 
@@ -480,7 +480,7 @@ class ShowServiceTest {
         Show show = new Show();
 
         when(showRepository.findById(1L)).thenReturn(Optional.of(show));
-        when(bookingRepository.existsByShowIdAndBookingStatusInAndDeletedFalse(
+        when(bookingRepository.existsByShowIdAndStatusInAndDeletedFalse(
                         1L, List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
                 .thenReturn(true);
 
