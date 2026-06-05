@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -142,7 +141,8 @@ class BookingRepositoryTest {
         booking.setUnitPrice(new BigDecimal("3500.00"));
         booking.setTotalPrice(new BigDecimal("7000.00"));
         booking.setStatus(status);
-        booking.setBookingTime(LocalDateTime.now());
+        booking.setBookingTime(OffsetDateTime.now());
+        booking.setGuestAccessToken("guest-token");
         booking.setDeleted(deleted);
 
         return booking;

@@ -3,10 +3,12 @@ package com.example.moviebookingapp.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.example.moviebookingapp.dtos.booking.BookingReqDto;
 import com.example.moviebookingapp.dtos.booking.BookingResDto;
+import com.example.moviebookingapp.entity.BaseEntity;
 import com.example.moviebookingapp.entity.Booking;
 import com.example.moviebookingapp.entity.Show;
 import com.example.moviebookingapp.entity.User;
@@ -38,6 +41,8 @@ import com.example.moviebookingapp.repository.UserRepository;
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
+
+    private static final String GUEST_TOKEN = "guest-token";
 
     @Mock
     private BookingRepository bookingRepository;
@@ -80,16 +85,19 @@ class BookingServiceTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.PENDING,
-                null);
+                null,
+                GUEST_TOKEN);
 
         when(showRepository.findById(10L)).thenReturn(Optional.of(show));
         when(bookingMapper.toEntity(
-                        request,
-                        null,
-                        show,
-                        BookingStatus.PENDING,
-                        new BigDecimal("3500.00"),
-                        new BigDecimal("7000.00")))
+                        eq(request),
+                        eq(null),
+                        eq(show),
+                        eq(BookingStatus.PENDING),
+                        eq(new BigDecimal("3500.00")),
+                        eq(new BigDecimal("7000.00")),
+                        any(OffsetDateTime.class),
+                        any(String.class)))
                 .thenReturn(bookingToSave);
         when(bookingRepository.save(bookingToSave)).thenReturn(savedBooking);
         when(bookingMapper.toDto(savedBooking)).thenReturn(response);
@@ -101,12 +109,14 @@ class BookingServiceTest {
 
         verify(bookingMapper)
                 .toEntity(
-                        request,
-                        null,
-                        show,
-                        BookingStatus.PENDING,
-                        new BigDecimal("3500.00"),
-                        new BigDecimal("7000.00"));
+                        eq(request),
+                        eq(null),
+                        eq(show),
+                        eq(BookingStatus.PENDING),
+                        eq(new BigDecimal("3500.00")),
+                        eq(new BigDecimal("7000.00")),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(userRepository, never()).findById(any(Long.class));
         verify(bookingRepository).save(bookingToSave);
     }
@@ -130,7 +140,9 @@ class BookingServiceTest {
                         any(Show.class),
                         any(BookingStatus.class),
                         any(BigDecimal.class),
-                        any(BigDecimal.class));
+                        any(BigDecimal.class),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -152,7 +164,9 @@ class BookingServiceTest {
                         any(Show.class),
                         any(BookingStatus.class),
                         any(BigDecimal.class),
-                        any(BigDecimal.class));
+                        any(BigDecimal.class),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -180,7 +194,9 @@ class BookingServiceTest {
                         any(Show.class),
                         any(BookingStatus.class),
                         any(BigDecimal.class),
-                        any(BigDecimal.class));
+                        any(BigDecimal.class),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -208,7 +224,9 @@ class BookingServiceTest {
                         any(Show.class),
                         any(BookingStatus.class),
                         any(BigDecimal.class),
-                        any(BigDecimal.class));
+                        any(BigDecimal.class),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -236,7 +254,9 @@ class BookingServiceTest {
                         any(Show.class),
                         any(BookingStatus.class),
                         any(BigDecimal.class),
-                        any(BigDecimal.class));
+                        any(BigDecimal.class),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -264,7 +284,9 @@ class BookingServiceTest {
                         any(Show.class),
                         any(BookingStatus.class),
                         any(BigDecimal.class),
-                        any(BigDecimal.class));
+                        any(BigDecimal.class),
+                        any(OffsetDateTime.class),
+                        any(String.class));
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
@@ -296,22 +318,13 @@ class BookingServiceTest {
         verify(bookingRepository, never()).save(any(Booking.class));
     }
 
-    private BookingReqDto guestBookingRequest(Long showId, Integer ticketQuantity) {
-
-        return new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, showId, ticketQuantity);
-    }
-
-    private BookingReqDto accountBookingRequest(Long userId, Long showId, Integer ticketQuantity) {
-
-        return new BookingReqDto(userId, "Ada", "Lovelace", "ada@example.com", null, showId, ticketQuantity);
-    }
-
     @Test
     void confirmBookingConfirmsPendingBookingAndReducesShowCapacity() {
 
         Long bookingId = 100L;
 
         Show show = new Show();
+        setId(show, 10L);
         show.setStatus(ShowStatus.SCHEDULED);
         show.setStartTime(OffsetDateTime.now().plusDays(1));
         show.setAvailableCapacity(50);
@@ -320,6 +333,7 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.PENDING);
         booking.setShow(show);
         booking.setTicketQuantity(2);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         Booking savedBooking = new Booking();
 
@@ -335,13 +349,15 @@ class BookingServiceTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CONFIRMED,
-                null);
+                null,
+                GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
         when(bookingRepository.save(booking)).thenReturn(savedBooking);
         when(bookingMapper.toDto(savedBooking)).thenReturn(response);
 
-        BookingResDto result = bookingService.confirmBooking(bookingId);
+        BookingResDto result = bookingService.confirmBooking(bookingId, GUEST_TOKEN);
 
         assertThat(result).isEqualTo(response);
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
@@ -357,7 +373,7 @@ class BookingServiceTest {
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(BookingNotFoundException.class)
                 .hasMessage("Booking not found with ID: 999");
 
@@ -371,10 +387,11 @@ class BookingServiceTest {
 
         Booking booking = new Booking();
         booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(InvalidBookingRequestException.class)
                 .hasMessage("Only pending bookings can be confirmed");
 
@@ -388,10 +405,11 @@ class BookingServiceTest {
 
         Booking booking = new Booking();
         booking.setStatus(BookingStatus.CANCELLED);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(InvalidBookingRequestException.class)
                 .hasMessage("Only pending bookings can be confirmed");
 
@@ -404,6 +422,7 @@ class BookingServiceTest {
         Long bookingId = 100L;
 
         Show show = new Show();
+        setId(show, 10L);
         show.setStatus(ShowStatus.SCHEDULED);
         show.setStartTime(OffsetDateTime.now().plusDays(1));
         show.setAvailableCapacity(1);
@@ -412,10 +431,12 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.PENDING);
         booking.setShow(show);
         booking.setTicketQuantity(2);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
 
-        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(InsufficientShowCapacityException.class)
                 .hasMessage("Not enough seats available for this show");
 
@@ -431,6 +452,7 @@ class BookingServiceTest {
         Long bookingId = 100L;
 
         Show show = new Show();
+        setId(show, 10L);
         show.setStatus(ShowStatus.SCHEDULED);
         show.setStartTime(OffsetDateTime.now().minusMinutes(1));
         show.setAvailableCapacity(50);
@@ -439,10 +461,12 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.PENDING);
         booking.setShow(show);
         booking.setTicketQuantity(2);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
 
-        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(ShowNotBookableException.class)
                 .hasMessage("This show has already started");
 
@@ -465,6 +489,7 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.PENDING);
         booking.setShow(show);
         booking.setTicketQuantity(2);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         Booking savedBooking = new Booking();
 
@@ -480,13 +505,14 @@ class BookingServiceTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CANCELLED,
-                null);
+                null,
+                GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
         when(bookingRepository.save(booking)).thenReturn(savedBooking);
         when(bookingMapper.toDto(savedBooking)).thenReturn(response);
 
-        BookingResDto result = bookingService.cancelBooking(bookingId);
+        BookingResDto result = bookingService.cancelBooking(bookingId, GUEST_TOKEN);
 
         assertThat(result).isEqualTo(response);
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
@@ -501,6 +527,7 @@ class BookingServiceTest {
         Long bookingId = 100L;
 
         Show show = new Show();
+        setId(show, 10L);
         show.setStartTime(OffsetDateTime.now().plusDays(1));
         show.setAvailableCapacity(48);
 
@@ -508,6 +535,7 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setShow(show);
         booking.setTicketQuantity(2);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         Booking savedBooking = new Booking();
 
@@ -523,13 +551,15 @@ class BookingServiceTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CANCELLED,
-                null);
+                null,
+                GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
         when(bookingRepository.save(booking)).thenReturn(savedBooking);
         when(bookingMapper.toDto(savedBooking)).thenReturn(response);
 
-        BookingResDto result = bookingService.cancelBooking(bookingId);
+        BookingResDto result = bookingService.cancelBooking(bookingId, GUEST_TOKEN);
 
         assertThat(result).isEqualTo(response);
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
@@ -545,7 +575,7 @@ class BookingServiceTest {
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(BookingNotFoundException.class)
                 .hasMessage("Booking not found with ID: 999");
 
@@ -559,10 +589,11 @@ class BookingServiceTest {
 
         Booking booking = new Booking();
         booking.setStatus(BookingStatus.CANCELLED);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(InvalidBookingRequestException.class)
                 .hasMessage("Booking is already cancelled");
 
@@ -582,10 +613,11 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setShow(show);
         booking.setTicketQuantity(2);
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId))
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId, GUEST_TOKEN))
                 .isInstanceOf(InvalidBookingRequestException.class)
                 .hasMessage("Cannot cancel booking after show has started");
 
@@ -601,6 +633,7 @@ class BookingServiceTest {
         Long bookingId = 100L;
 
         Booking booking = new Booking();
+        booking.setGuestAccessToken(GUEST_TOKEN);
 
         BookingResDto response = new BookingResDto(
                 bookingId,
@@ -614,16 +647,34 @@ class BookingServiceTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CONFIRMED,
-                null);
+                null,
+                GUEST_TOKEN);
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
         when(bookingMapper.toDto(booking)).thenReturn(response);
 
-        BookingResDto result = bookingService.getBookingById(bookingId);
+        BookingResDto result = bookingService.getBookingById(bookingId, GUEST_TOKEN);
 
         assertThat(result).isEqualTo(response);
 
         verify(bookingMapper).toDto(booking);
+    }
+
+    @Test
+    void getBookingByIdRejectsInvalidGuestToken() {
+
+        Long bookingId = 100L;
+
+        Booking booking = new Booking();
+        booking.setGuestAccessToken(GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.getBookingById(bookingId, "wrong-token"))
+                .isInstanceOf(InvalidBookingRequestException.class)
+                .hasMessage("Guest booking token is invalid");
+
+        verify(bookingMapper, never()).toDto(any(Booking.class));
     }
 
     @Test
@@ -632,10 +683,30 @@ class BookingServiceTest {
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> bookingService.getBookingById(bookingId))
+        assertThatThrownBy(() -> bookingService.getBookingById(bookingId, GUEST_TOKEN))
                 .isInstanceOf(BookingNotFoundException.class)
                 .hasMessage("Booking not found with ID: 999");
 
         verify(bookingMapper, never()).toDto(any(Booking.class));
+    }
+
+    private static void setId(BaseEntity entity, Long id) {
+        try {
+            Field field = BaseEntity.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(entity, id);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to set id via reflection", e);
+        }
+    }
+
+    private BookingReqDto guestBookingRequest(Long showId, Integer ticketQuantity) {
+
+        return new BookingReqDto(null, showId, "Ada", "Lovelace", "ada@example.com", null, ticketQuantity);
+    }
+
+    private BookingReqDto accountBookingRequest(Long userId, Long showId, Integer ticketQuantity) {
+
+        return new BookingReqDto(userId, showId, "Ada", "Lovelace", "ada@example.com", null, ticketQuantity);
     }
 }

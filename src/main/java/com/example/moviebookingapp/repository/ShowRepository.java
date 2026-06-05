@@ -1,9 +1,13 @@
 package com.example.moviebookingapp.repository;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -43,4 +47,8 @@ public interface ShowRepository extends JpaRepository<Show, Long>, JpaSpecificat
             @Param("status") ShowStatus status,
             @Param("bufferedStart") OffsetDateTime bufferedStart,
             @Param("bufferedEnd") OffsetDateTime bufferedEnd);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Show s WHERE s.id = :showId")
+    Optional<Show> findByIdWithPessimisticWriteLock(@Param("showId") Long showId);
 }

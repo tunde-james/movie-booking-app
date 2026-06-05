@@ -1,6 +1,7 @@
 package com.example.moviebookingapp.mapper;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import org.mapstruct.Mapper;
@@ -28,7 +29,8 @@ public interface BookingMapper {
     @Mapping(target = "unitPrice", source = "unitPrice")
     @Mapping(target = "totalPrice", source = "totalPrice")
     @Mapping(target = "status", source = "status")
-    @Mapping(target = "bookingTime", expression = "java(java.time.LocalDateTime.now())")
+    @Mapping(target = "bookingTime", source = "bookingTime")
+    @Mapping(target = "guestAccessToken", source = "guestAccessToken")
     @Mapping(target = "deleted", ignore = true)
     Booking toEntity(
             BookingReqDto reqDto,
@@ -36,7 +38,9 @@ public interface BookingMapper {
             Show show,
             BookingStatus status,
             BigDecimal unitPrice,
-            BigDecimal totalPrice);
+            BigDecimal totalPrice,
+            OffsetDateTime bookingTime,
+            String guestAccessToken);
 
     BookingResDto toDto(Booking booking);
 

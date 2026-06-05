@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,9 +29,10 @@ public class BookingController {
     }
 
     @GetMapping("/{bookingId}")
-    public ResponseEntity<BookingResDto> getBookingById(@PathVariable Long bookingId) {
+    public ResponseEntity<BookingResDto> getBookingById(
+            @PathVariable Long bookingId, @RequestHeader("X-Guest-Booking-Token") String guestAccessToken) {
 
-        BookingResDto booking = bookingService.getBookingById(bookingId);
+        BookingResDto booking = bookingService.getBookingById(bookingId, guestAccessToken);
 
         return ResponseEntity.ok(booking);
     }
@@ -46,17 +48,19 @@ public class BookingController {
     }
 
     @PostMapping("/{bookingId}/confirm")
-    public ResponseEntity<BookingResDto> confirmBooking(@PathVariable Long bookingId) {
+    public ResponseEntity<BookingResDto> confirmBooking(
+            @PathVariable Long bookingId, @RequestHeader("X-Guest-Booking-Token") String guestAccessToken) {
 
-        BookingResDto booking = bookingService.confirmBooking(bookingId);
+        BookingResDto booking = bookingService.confirmBooking(bookingId, guestAccessToken);
 
         return ResponseEntity.ok(booking);
     }
 
     @PostMapping("/{bookingId}/cancel")
-    public ResponseEntity<BookingResDto> cancelBooking(@PathVariable Long bookingId) {
+    public ResponseEntity<BookingResDto> cancelBooking(
+            @PathVariable Long bookingId, @RequestHeader("X-Guest-Booking-Token") String guestAccessToken) {
 
-        BookingResDto booking = bookingService.cancelBooking(bookingId);
+        BookingResDto booking = bookingService.cancelBooking(bookingId, guestAccessToken);
 
         return ResponseEntity.ok(booking);
     }

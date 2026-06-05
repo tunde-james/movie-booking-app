@@ -1,7 +1,7 @@
 package com.example.moviebookingapp.dtos.booking;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import com.example.moviebookingapp.dtos.show.ShowResDto;
 import com.example.moviebookingapp.dtos.user.UserResDto;
@@ -19,4 +19,5 @@ public record BookingResDto(
         BigDecimal unitPrice,
         BigDecimal totalPrice,
         BookingStatus status,
-        LocalDateTime bookingTime) {}
+        OffsetDateTime bookingTime,
+        String guestAccessToken) {}

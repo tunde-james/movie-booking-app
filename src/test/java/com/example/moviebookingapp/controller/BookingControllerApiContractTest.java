@@ -48,6 +48,8 @@ import com.example.moviebookingapp.service.BookingService;
 @Import(GlobalExceptionHandler.class)
 class BookingControllerApiContractTest {
 
+    private static final String GUEST_TOKEN = "guest-token";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -76,7 +78,7 @@ class BookingControllerApiContractTest {
                 new BigDecimal("3500.00"),
                 ShowStatus.SCHEDULED);
 
-        BookingResDto createdBooking = new BookingResDto(
+        BookingResDto response = new BookingResDto(
                 99L,
                 null,
                 "Ada",
@@ -88,9 +90,10 @@ class BookingControllerApiContractTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.PENDING,
-                null);
+                null,
+                GUEST_TOKEN);
 
-        when(bookingService.createBooking(any(BookingReqDto.class))).thenReturn(createdBooking);
+        when(bookingService.createBooking(any(BookingReqDto.class))).thenReturn(response);
 
         String requestBody = """
         {
@@ -116,14 +119,15 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.unitPrice").value(3500.00))
                 .andExpect(jsonPath("$.totalPrice").value(7000.00))
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.guestAccessToken").value(GUEST_TOKEN));
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void createBookingReturnsConflictWhenShowIsNotBookable() throws Exception {
 
-        BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
+        BookingReqDto reqDto = new BookingReqDto(null, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
         when(bookingService.createBooking(any(BookingReqDto.class)))
                 .thenThrow(new ShowNotBookableException("This show is sold out"));
@@ -144,7 +148,7 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void createBookingReturnsConflictWhenShowCapacityIsInsufficient() throws Exception {
 
-        BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 5);
+        BookingReqDto reqDto = new BookingReqDto(null, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
         when(bookingService.createBooking(any(BookingReqDto.class)))
                 .thenThrow(new InsufficientShowCapacityException("Not enough seats available for this show"));
@@ -165,7 +169,7 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void createBookingReturnsBadRequestWhenBookingRequestIsInvalid() throws Exception {
 
-        BookingReqDto reqDto = new BookingReqDto(null, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
+        BookingReqDto reqDto = new BookingReqDto(null, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
         when(bookingService.createBooking(any(BookingReqDto.class)))
                 .thenThrow(new InvalidBookingRequestException("Ticket quantity must be greater than zero"));
@@ -185,7 +189,8 @@ class BookingControllerApiContractTest {
     @Test
     @WithMockUser(roles = "USER")
     void createBookingReturnsNotFoundWhenUserDoesNotExist() throws Exception {
-        BookingReqDto reqDto = new BookingReqDto(99L, "Ada", "Lovelace", "ada@example.com", null, 10L, 2);
+
+        BookingReqDto reqDto = new BookingReqDto(99L, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
         when(bookingService.createBooking(any(BookingReqDto.class)))
                 .thenThrow(new UserNotFoundException("User not found with ID: 99"));
@@ -205,6 +210,7 @@ class BookingControllerApiContractTest {
     @Test
     @WithMockUser(roles = "USER")
     void createBookingReturnsValidationErrorWhenGuestEmailIsBlank() throws Exception {
+
         String requestBody = """
             {
               "firstName": "Ada",
@@ -247,11 +253,14 @@ class BookingControllerApiContractTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CONFIRMED,
-                null);
+                null,
+                GUEST_TOKEN);
 
-        when(bookingService.confirmBooking(100L)).thenReturn(response);
+        when(bookingService.confirmBooking(100L, GUEST_TOKEN)).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(100))
@@ -260,17 +269,19 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        verify(bookingService).confirmBooking(100L);
+        verify(bookingService).confirmBooking(100L, GUEST_TOKEN);
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void confirmBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
-        when(bookingService.confirmBooking(999L))
+        when(bookingService.confirmBooking(999L, GUEST_TOKEN))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 999L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 999L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Booking not found"))
@@ -283,10 +294,12 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void confirmBookingReturnsBadRequestWhenBookingIsNotPending() throws Exception {
 
-        when(bookingService.confirmBooking(100L))
+        when(bookingService.confirmBooking(100L, GUEST_TOKEN))
                 .thenThrow(new InvalidBookingRequestException("Only pending bookings can be confirmed"));
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Invalid booking request"))
@@ -311,11 +324,14 @@ class BookingControllerApiContractTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CANCELLED,
-                null);
+                null,
+                GUEST_TOKEN);
 
-        when(bookingService.cancelBooking(100L)).thenReturn(response);
+        when(bookingService.cancelBooking(100L, GUEST_TOKEN)).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(100))
@@ -324,17 +340,19 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        verify(bookingService).cancelBooking(100L);
+        verify(bookingService).cancelBooking(100L, GUEST_TOKEN);
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
-        when(bookingService.cancelBooking(999L))
+        when(bookingService.cancelBooking(999L, GUEST_TOKEN))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 999L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 999L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Booking not found"))
@@ -347,10 +365,12 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsBadRequestWhenBookingCannotBeCancelled() throws Exception {
 
-        when(bookingService.cancelBooking(100L))
+        when(bookingService.cancelBooking(100L, GUEST_TOKEN))
                 .thenThrow(new InvalidBookingRequestException("Booking is already cancelled"));
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Invalid booking request"))
@@ -375,11 +395,12 @@ class BookingControllerApiContractTest {
                 new BigDecimal("3500.00"),
                 new BigDecimal("7000.00"),
                 BookingStatus.CONFIRMED,
-                null);
+                null,
+                GUEST_TOKEN);
 
-        when(bookingService.getBookingById(100L)).thenReturn(response);
+        when(bookingService.getBookingById(100L, GUEST_TOKEN)).thenReturn(response);
 
-        mockMvc.perform(get("/api/v1/bookings/{bookingId}", 100L))
+        mockMvc.perform(get("/api/v1/bookings/{bookingId}", 100L).header("X-Guest-Booking-Token", GUEST_TOKEN))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(100))
@@ -389,17 +410,17 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        verify(bookingService).getBookingById(100L);
+        verify(bookingService).getBookingById(100L, GUEST_TOKEN);
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void getBookingByIdReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
-        when(bookingService.getBookingById(999L))
+        when(bookingService.getBookingById(999L, GUEST_TOKEN))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
-        mockMvc.perform(get("/api/v1/bookings/{bookingId}", 999L))
+        mockMvc.perform(get("/api/v1/bookings/{bookingId}", 999L).header("X-Guest-Booking-Token", GUEST_TOKEN))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Booking not found"))
@@ -412,10 +433,12 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void confirmBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
 
-        when(bookingService.confirmBooking(100L))
+        when(bookingService.confirmBooking(100L, GUEST_TOKEN))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Concurrent update conflict"))
@@ -428,10 +451,12 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
 
-        when(bookingService.cancelBooking(100L))
+        when(bookingService.cancelBooking(100L, GUEST_TOKEN))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
 
-        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L).with(csrf()))
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
+                        .header("X-Guest-Booking-Token", GUEST_TOKEN)
+                        .with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Concurrent update conflict"))

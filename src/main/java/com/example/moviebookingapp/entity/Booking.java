@@ -1,7 +1,7 @@
 package com.example.moviebookingapp.entity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -78,5 +78,8 @@ public class Booking extends BaseEntity {
     private BookingStatus status;
 
     @Column(name = "booking_time", nullable = false)
-    private LocalDateTime bookingTime;
+    private OffsetDateTime bookingTime;
+
+    @Column(name = "guest_access_token", nullable = false, length = 64)
+    private String guestAccessToken;
 }

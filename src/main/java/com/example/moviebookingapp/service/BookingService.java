@@ -1,7 +1,9 @@
 package com.example.moviebookingapp.service;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.Objects;
 
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ import com.example.moviebookingapp.repository.UserRepository;
 public class BookingService {
 
     private static final int MAX_TICKET_QUANTITY = 10;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
@@ -80,8 +83,18 @@ public class BookingService {
         BigDecimal unitPrice = show.getPricePerTicket();
         BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(ticketQuantity.longValue()));
 
+        String guestAccessToken = generateGuestAccessToken();
+
         Booking booking = Objects.requireNonNull(
-                bookingMapper.toEntity(validatedReqDto, user, show, BookingStatus.PENDING, unitPrice, totalPrice),
+                bookingMapper.toEntity(
+                        validatedReqDto,
+                        user,
+                        show,
+                        BookingStatus.PENDING,
+                        unitPrice,
+                        totalPrice,
+                        OffsetDateTime.now(),
+                        guestAccessToken),
                 "Booking mapper must not return null");
 
         Booking savedBooking = bookingRepository.save(booking);
@@ -90,7 +103,7 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResDto confirmBooking(Long bookingId) {
+    public BookingResDto confirmBooking(Long bookingId, String guestAccessToken) {
 
         Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
 
@@ -98,11 +111,15 @@ public class BookingService {
                 .findById(validatedBookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
 
+        ensureGuestTokenMatches(booking, guestAccessToken);
+
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new InvalidBookingRequestException("Only pending bookings can be confirmed");
         }
 
-        Show show = booking.getShow();
+        Show show = showRepository
+                .findByIdWithPessimisticWriteLock(booking.getShow().getId())
+                .orElseThrow(() -> new ShowNotFoundException("Show no longer exists"));
 
         ensureShowCanAcceptBooking(show, booking.getTicketQuantity());
 
@@ -115,13 +132,15 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResDto cancelBooking(Long bookingId) {
+    public BookingResDto cancelBooking(Long bookingId, String guestAccessToken) {
 
         Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
 
         Booking booking = bookingRepository
                 .findById(validatedBookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
+
+        ensureGuestTokenMatches(booking, guestAccessToken);
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new InvalidBookingRequestException("Booking is already cancelled");
@@ -134,6 +153,10 @@ public class BookingService {
         }
 
         if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            show = showRepository
+                    .findByIdWithPessimisticWriteLock(show.getId())
+                    .orElseThrow(() -> new ShowNotFoundException("Show no longer exists"));
+
             show.setAvailableCapacity(show.getAvailableCapacity() + booking.getTicketQuantity());
         }
 
@@ -145,13 +168,15 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public BookingResDto getBookingById(Long bookingId) {
+    public BookingResDto getBookingById(Long bookingId, String guestAccessToken) {
 
         Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
 
         Booking booking = bookingRepository
                 .findById(validatedBookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
+
+        ensureGuestTokenMatches(booking, guestAccessToken);
 
         return bookingMapper.toDto(booking);
     }
@@ -166,11 +191,11 @@ public class BookingService {
 
         return new BookingReqDto(
                 reqDto.userId(),
+                reqDto.showId(),
                 firstName,
                 lastName,
                 email,
                 phoneNumber == null || phoneNumber.isBlank() ? null : phoneNumber,
-                reqDto.showId(),
                 reqDto.ticketQuantity());
     }
 
@@ -181,6 +206,27 @@ public class BookingService {
         }
 
         return value.trim();
+    }
+
+    private String generateGuestAccessToken() {
+
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+
+        return HexFormat.of().formatHex(bytes);
+    }
+
+    private void ensureGuestTokenMatches(Booking booking, String guestAccessToken) {
+
+        if (guestAccessToken == null || guestAccessToken.isBlank()) {
+            throw new InvalidBookingRequestException("Guest booking token is required");
+        }
+
+        String savedGuestAccessToken = booking.getGuestAccessToken();
+
+        if (savedGuestAccessToken == null || !savedGuestAccessToken.equals(guestAccessToken.trim())) {
+            throw new InvalidBookingRequestException("Guest booking token is invalid");
+        }
     }
 
     private void ensureShowCanAcceptBooking(Show show, Integer ticketQuantity) {
