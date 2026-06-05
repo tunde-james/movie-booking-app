@@ -1,6 +1,8 @@
 package com.example.moviebookingapp.service;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
@@ -224,9 +226,17 @@ public class BookingService {
 
         String savedGuestAccessToken = booking.getGuestAccessToken();
 
-        if (savedGuestAccessToken == null || !savedGuestAccessToken.equals(guestAccessToken.trim())) {
+        if (savedGuestAccessToken == null || !constantTimeEquals(savedGuestAccessToken, guestAccessToken.trim())) {
             throw new InvalidBookingRequestException("Guest booking token is invalid");
         }
+    }
+
+    private boolean constantTimeEquals(String a, String b) {
+
+        byte[] aBytes = a.getBytes(StandardCharsets.UTF_8);
+        byte[] bBytes = b.getBytes(StandardCharsets.UTF_8);
+
+        return MessageDigest.isEqual(aBytes, bBytes);
     }
 
     private void ensureShowCanAcceptBooking(Show show, Integer ticketQuantity) {
