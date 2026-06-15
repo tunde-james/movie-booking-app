@@ -690,6 +690,25 @@ class BookingServiceTest {
         verify(bookingMapper, never()).toDto(any(Booking.class));
     }
 
+    @Test
+    void confirmBookingRejectsInvalidGuestToken() {
+
+        Long bookingId = 100L;
+
+        Booking booking = new Booking();
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setGuestAccessToken(GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, "wrong-token"))
+                .isInstanceOf(InvalidBookingRequestException.class)
+                .hasMessage("Guest booking token is invalid");
+
+        verify(showRepository, never()).findByIdWithPessimisticWriteLock(any(Long.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
     private static void setId(BaseEntity entity, Long id) {
         try {
             Field field = BaseEntity.class.getDeclaredField("id");

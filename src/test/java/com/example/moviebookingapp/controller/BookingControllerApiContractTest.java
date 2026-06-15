@@ -464,4 +464,24 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.detail").value("The resource was changed by another request. Please try again."))
                 .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/cancel"));
     }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void confirmBookingReturnsBadRequestWhenGuestTokenIsInvalid() throws Exception {
+
+        when(bookingService.confirmBooking(100L, "wrong-token"))
+                .thenThrow(new InvalidBookingRequestException("Guest booking token is invalid"));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .header("X-Guest-Booking-Token", "wrong-token")
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Invalid booking request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Guest booking token is invalid"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/confirm"));
+
+        verify(bookingService).confirmBooking(100L, "wrong-token");
+    }
 }

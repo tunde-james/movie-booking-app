@@ -2,18 +2,26 @@ package com.example.moviebookingapp.mapper;
 
 import java.util.List;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
+import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.user.UserReqDto;
 import com.example.moviebookingapp.dtos.user.UserResDto;
 import com.example.moviebookingapp.entity.User;
 
 @Mapper(config = BaseMapperConfig.class)
 public interface UserMapper {
+
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "bookings", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "role", ignore = true)
+    User toEntity(RegisterReqDto req);
 
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "bookings", ignore = true)
@@ -29,4 +37,20 @@ public interface UserMapper {
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "password", ignore = true)
     void updateEntityFromDto(UserReqDto req, @MappingTarget User user);
+
+    @AfterMapping
+    default void normalizeFields(@MappingTarget User user) {
+
+        if (user.getUsername() != null) {
+            user.setUsername(user.getUsername().trim().toLowerCase());
+        }
+
+        if (user.getEmail() != null) {
+            user.setEmail(user.getEmail().trim().toLowerCase());
+        }
+        
+        if (user.getPhoneNumber() != null) {
+            user.setPhoneNumber(user.getPhoneNumber().trim());
+        }
+    }
 }
