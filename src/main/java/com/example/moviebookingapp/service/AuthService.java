@@ -20,6 +20,7 @@ import com.example.moviebookingapp.mapper.UserMapper;
 import com.example.moviebookingapp.repository.UserRepository;
 import com.example.moviebookingapp.security.AuthenticatedUser;
 import com.example.moviebookingapp.security.JwtService;
+import com.example.moviebookingapp.security.TokenBlacklistService;
 
 @Service
 public class AuthService {
@@ -30,6 +31,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserMapper userMapper;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public AuthService(
             UserRepository userRepository,
@@ -37,13 +39,15 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             JwtProperties jwtProperties,
-            UserMapper userMapper) {
+            UserMapper userMapper,
+            TokenBlacklistService tokenBlacklistService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.userMapper = userMapper;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Transactional
@@ -86,5 +90,9 @@ public class AuthService {
                 jwtService.generateToken(user),
                 "Bearer",
                 jwtProperties.getExpiresIn().toSeconds());
+    }
+
+    public void logout(String jti) {
+        tokenBlacklistService.blacklist(jti);
     }
 }

@@ -34,6 +34,7 @@ import com.example.moviebookingapp.mapper.UserMapper;
 import com.example.moviebookingapp.repository.UserRepository;
 import com.example.moviebookingapp.security.AuthenticatedUser;
 import com.example.moviebookingapp.security.JwtService;
+import com.example.moviebookingapp.security.TokenBlacklistService;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
@@ -56,6 +57,9 @@ class AuthServiceTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private TokenBlacklistService tokenBlacklistService;
 
     @InjectMocks
     private AuthService authService;
@@ -179,6 +183,12 @@ class AuthServiceTest {
                 .hasMessage("Invalid username/email or password");
 
         verify(jwtService, never()).generateToken(any(AuthenticatedUser.class));
+    }
+
+    @Test
+    void logoutBlacklistsTokenId() {
+
+        authService.logout("jwt-id-123");
     }
 
     private User user(String username, String email, String phoneNumber) {

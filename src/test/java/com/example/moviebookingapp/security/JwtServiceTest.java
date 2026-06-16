@@ -115,6 +115,29 @@ class JwtServiceTest {
         verify(jwtEncoder).encode(any(JwtEncoderParameters.class));
     }
 
+    @Test
+    void generateTokenIncludesUniqueJti() {
+
+        AuthenticatedUser user =
+                new AuthenticatedUser(1L, "johndoe", "john@example.com", "encoded-password", "CUSTOMER");
+
+        Jwt jwt = Jwt.withTokenValue("jwt-token")
+                .header("alg", "HS256")
+                .claim("sub", "johndoe")
+                .build();
+
+        when(jwtProperties.getExpiresIn()).thenReturn(Duration.ofHours(1));
+        when(jwtProperties.getIssuer()).thenReturn("moviebookingapp");
+        when(jwtEncoder.encode(encoderParamsCaptor.capture())).thenReturn(jwt);
+
+        jwtService.generateToken(user);
+
+        JwtClaimsSet claims = extractClaims(encoderParamsCaptor.getValue());
+
+        assertThat(claims.getId()).isNotNull();
+        assertThat(claims.getId()).isNotBlank();
+    }
+
     private JwtClaimsSet extractClaims(JwtEncoderParameters params) {
 
         try {

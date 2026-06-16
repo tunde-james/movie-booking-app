@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import org.junit.jupiter.api.Test;
 
+import com.example.moviebookingapp.config.JwtProperties;
 import com.example.moviebookingapp.config.SecurityConfig;
 import com.example.moviebookingapp.dtos.auth.LoginReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginResDto;
@@ -26,11 +28,13 @@ import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.auth.RegisterResDto;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
 import com.example.moviebookingapp.exception.UserAlreadyExistsException;
+import com.example.moviebookingapp.security.TokenBlacklistService;
 import com.example.moviebookingapp.service.AuthService;
 
 @SuppressWarnings("null")
-@WebMvcTest(AuthController.class)
+@WebMvcTest(controllers = AuthController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@EnableConfigurationProperties(JwtProperties.class)
 class AuthControllerApiContractTest {
 
     @Autowired
@@ -38,6 +42,9 @@ class AuthControllerApiContractTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
 
     @Test
     void loginReturnsBearerTokenForValidCredentials() throws Exception {
@@ -239,5 +246,24 @@ class AuthControllerApiContractTest {
                 .andExpect(jsonPath("$.username").value("janedoe"))
                 .andExpect(jsonPath("$.email").value("jane@example.com"))
                 .andExpect(jsonPath("$.accessToken").value("jwt-token-2"));
+    }
+
+    @Test
+    void logoutReturnsNoContentForAuthenticatedUser() throws Exception {
+
+        mockMvc.perform(
+                        post("/api/v1/auth/logout")
+                                .with(org.springframework.security.test.web.servlet.request
+                                        .SecurityMockMvcRequestPostProcessors.jwt()
+                                        .jwt(jwt -> jwt.claim("jti", "test-jti"))))
+                .andExpect(status().isNoContent());
+
+        org.mockito.Mockito.verify(authService).logout("test-jti");
+    }
+
+    @Test
+    void logoutReturnsUnauthorizedWithoutAuthentication() throws Exception {
+
+        mockMvc.perform(post("/api/v1/auth/logout")).andExpect(status().isUnauthorized());
     }
 }

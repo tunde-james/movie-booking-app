@@ -1,10 +1,5 @@
 package com.example.moviebookingapp.config;
 
-import java.nio.charset.StandardCharsets;
-
-import javax.crypto.spec.SecretKeySpec;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,8 +10,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -24,6 +25,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+
+import com.example.moviebookingapp.security.TokenBlacklistService;
 
 @Configuration
 @EnableMethodSecurity
@@ -84,16 +87,31 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtEncoder jwtEncoder(@Value("${app.jwt.secret}") String secret) {
+    JwtEncoder jwtEncoder(JwtProperties jwtProperties) {
 
-        return new NimbusJwtEncoder(new ImmutableSecret<>(secret.getBytes(StandardCharsets.UTF_8)));
+        return new NimbusJwtEncoder(
+                new ImmutableSecret<>(jwtProperties.getSecretKey().getEncoded()));
     }
 
     @Bean
-    JwtDecoder jwtDecoder(@Value("${app.jwt.secret}") String secret) {
+    JwtDecoder jwtDecoder(JwtProperties jwtProperties, TokenBlacklistService tokenBlacklistService) {
 
-        SecretKeySpec secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
+        NimbusJwtDecoder decoder =
+                NimbusJwtDecoder.withSecretKey(jwtProperties.getSecretKey()).build();
+
+        OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefault();
+
+        OAuth2TokenValidator<Jwt> blacklistValidator = token -> {
+            if (token.getId() != null && tokenBlacklistService.isBlacklisted(token.getId())) {
+                return OAuth2TokenValidatorResult.failure(
+                        new OAuth2Error("invalid_token", "Token has been revoked", null));
+            }
+            return OAuth2TokenValidatorResult.success();
+        };
+
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(defaultValidator, blacklistValidator));
+
+        return decoder;
     }
 
     @Bean

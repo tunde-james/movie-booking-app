@@ -1,6 +1,7 @@
 package com.example.moviebookingapp.security;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -26,6 +27,7 @@ public class JwtService {
         Instant expiresAt = now.plus(jwtProperties.getExpiresIn());
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
+                .id(UUID.randomUUID().toString())
                 .issuer(jwtProperties.getIssuer())
                 .issuedAt(now)
                 .expiresAt(expiresAt)

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -18,8 +19,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.example.moviebookingapp.config.JwtProperties;
 import com.example.moviebookingapp.config.SecurityConfig;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
+import com.example.moviebookingapp.security.TokenBlacklistService;
 import com.example.moviebookingapp.service.AuditoriumService;
 import com.example.moviebookingapp.service.AuthService;
 import com.example.moviebookingapp.service.BookingService;
@@ -28,8 +31,9 @@ import com.example.moviebookingapp.service.MovieService;
 import com.example.moviebookingapp.service.ShowService;
 
 @SuppressWarnings("null")
-@WebMvcTest
+@WebMvcTest()
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@EnableConfigurationProperties(JwtProperties.class)
 class SecurityEnforcementTest {
 
     @Autowired
@@ -52,6 +56,9 @@ class SecurityEnforcementTest {
 
     @MockitoBean
     private BookingService bookingService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
 
     @Nested
     class PublicEndpoints {

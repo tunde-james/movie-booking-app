@@ -26,7 +26,7 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-this-to-a-long-random-secret-at-least-32-characters}
+    secret: ${JWT_SECRET}
     issuer: ${JWT_ISSUER:moviebookingapp}
     expires-in: ${JWT_EXPIRES_IN:1h}
 
