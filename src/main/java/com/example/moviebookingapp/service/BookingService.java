@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.Objects;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ import com.example.moviebookingapp.mapper.BookingMapper;
 import com.example.moviebookingapp.repository.BookingRepository;
 import com.example.moviebookingapp.repository.ShowRepository;
 import com.example.moviebookingapp.repository.UserRepository;
+import com.example.moviebookingapp.security.BookingAccessContext;
 
 @Service
 public class BookingService {
@@ -54,13 +56,22 @@ public class BookingService {
     @Transactional
     public BookingResDto createBooking(BookingReqDto reqDto) {
 
+        return createBooking(reqDto, BookingAccessContext.guest());
+    }
+
+    @Transactional
+    public BookingResDto createBooking(BookingReqDto reqDto, BookingAccessContext accessContext) {
+
+        BookingAccessContext caller = normalizeAccessContext(accessContext);
         BookingReqDto validatedReqDto =
                 normalizeBookingRequest(Objects.requireNonNull(reqDto, "Booking request cannot be null"));
 
-        Long userId = validatedReqDto.userId();
-        Long showId = Objects.requireNonNull(validatedReqDto.showId(), "Show ID cannot be null");
+        Long userId = caller.authenticated() ? caller.userId() : null;
+        BookingReqDto bookingReqDto = withUserId(validatedReqDto, userId);
+
+        Long showId = Objects.requireNonNull(bookingReqDto.showId(), "Show ID cannot be null");
         Integer ticketQuantity =
-                Objects.requireNonNull(validatedReqDto.ticketQuantity(), "Ticket quantity cannot be null");
+                Objects.requireNonNull(bookingReqDto.ticketQuantity(), "Ticket quantity cannot be null");
 
         if (ticketQuantity <= 0) {
             throw new InvalidBookingRequestException("Ticket quantity must be positive");
@@ -89,7 +100,7 @@ public class BookingService {
 
         Booking booking = Objects.requireNonNull(
                 bookingMapper.toEntity(
-                        validatedReqDto,
+                        bookingReqDto,
                         user,
                         show,
                         BookingStatus.PENDING,
@@ -105,7 +116,13 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResDto confirmBooking(Long bookingId, String guestAccessToken) {
+    public BookingResDto confirmBooking(Long bookingId, String guessAccessToken) {
+
+        return confirmBooking(bookingId, guessAccessToken, BookingAccessContext.guest());
+    }
+
+    @Transactional
+    public BookingResDto confirmBooking(Long bookingId, String guestAccessToken, BookingAccessContext accessContext) {
 
         Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
 
@@ -113,7 +130,7 @@ public class BookingService {
                 .findById(validatedBookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
 
-        ensureGuestTokenMatches(booking, guestAccessToken);
+        ensureBookingAccessMatches(booking, guestAccessToken, accessContext);
 
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new InvalidBookingRequestException("Only pending bookings can be confirmed");
@@ -136,13 +153,19 @@ public class BookingService {
     @Transactional
     public BookingResDto cancelBooking(Long bookingId, String guestAccessToken) {
 
+        return cancelBooking(bookingId, guestAccessToken, BookingAccessContext.guest());
+    }
+
+    @Transactional
+    public BookingResDto cancelBooking(Long bookingId, String guestAccessToken, BookingAccessContext accessContext) {
+
         Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
 
         Booking booking = bookingRepository
                 .findById(validatedBookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
 
-        ensureGuestTokenMatches(booking, guestAccessToken);
+        ensureBookingAccessMatches(booking, guestAccessToken, accessContext);
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new InvalidBookingRequestException("Booking is already cancelled");
@@ -172,15 +195,60 @@ public class BookingService {
     @Transactional(readOnly = true)
     public BookingResDto getBookingById(Long bookingId, String guestAccessToken) {
 
+        return getBookingById(bookingId, guestAccessToken, BookingAccessContext.guest());
+    }
+
+    @Transactional(readOnly = true)
+    public BookingResDto getBookingById(Long bookingId, String guestAccessToken, BookingAccessContext accessContext) {
+
         Long validatedBookingId = Objects.requireNonNull(bookingId, "Booking ID cannot be null");
 
         Booking booking = bookingRepository
                 .findById(validatedBookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with ID: " + validatedBookingId));
 
-        ensureGuestTokenMatches(booking, guestAccessToken);
+        ensureBookingAccessMatches(booking, guestAccessToken, accessContext);
 
         return bookingMapper.toDto(booking);
+    }
+
+    private BookingAccessContext normalizeAccessContext(BookingAccessContext accessContext) {
+        return accessContext == null ? BookingAccessContext.guest() : accessContext;
+    }
+
+    private void ensureBookingAccessMatches(
+            Booking booking, String guestAccessToken, BookingAccessContext accessContext) {
+
+        BookingAccessContext caller = normalizeAccessContext(accessContext);
+
+        if (caller.admin()) {
+            return;
+        }
+
+        if (caller.authenticated()) {
+
+            User user = booking.getUser();
+
+            if (user != null && caller.userId().equals(user.getId())) {
+                return;
+            }
+
+            throw new AccessDeniedException("You do not have access to this booking");
+        }
+
+        ensureGuestTokenMatches(booking, guestAccessToken);
+    }
+
+    private BookingReqDto withUserId(BookingReqDto reqDto, Long userId) {
+
+        return new BookingReqDto(
+                userId,
+                reqDto.showId(),
+                reqDto.firstName(),
+                reqDto.lastName(),
+                reqDto.email(),
+                reqDto.phoneNumber(),
+                reqDto.ticketQuantity());
     }
 
     private BookingReqDto normalizeBookingRequest(BookingReqDto reqDto) {

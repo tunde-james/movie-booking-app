@@ -1,7 +1,11 @@
 package com.example.moviebookingapp.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -251,19 +255,23 @@ class AuthControllerApiContractTest {
     @Test
     void logoutReturnsNoContentForAuthenticatedUser() throws Exception {
 
-        mockMvc.perform(
-                        post("/api/v1/auth/logout")
-                                .with(org.springframework.security.test.web.servlet.request
-                                        .SecurityMockMvcRequestPostProcessors.jwt()
-                                        .jwt(jwt -> jwt.claim("jti", "test-jti"))))
+        mockMvc.perform(post("/api/v1/auth/logout").with(jwt().jwt(jwt -> jwt.claim("jti", "test-jti"))))
                 .andExpect(status().isNoContent());
 
-        org.mockito.Mockito.verify(authService).logout("test-jti");
+        verify(authService).logout("test-jti");
     }
 
     @Test
     void logoutReturnsUnauthorizedWithoutAuthentication() throws Exception {
 
         mockMvc.perform(post("/api/v1/auth/logout")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logoutReturnsBadRequestWhenJwtHasNoJti() throws Exception {
+
+        mockMvc.perform(post("/api/v1/auth/logout").with(jwt())).andExpect(status().isBadRequest());
+
+        verify(authService, never()).logout(anyString());
     }
 }

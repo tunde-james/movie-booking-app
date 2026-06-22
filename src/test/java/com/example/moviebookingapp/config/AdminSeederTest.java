@@ -1,18 +1,20 @@
 package com.example.moviebookingapp.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -29,17 +31,30 @@ class AdminSeederTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @InjectMocks
-    private AdminSeeder adminSeeder;
-
     @Captor
     private ArgumentCaptor<User> userCaptor;
 
+    private AdminProperties adminProperties;
+    private MockEnvironment environment;
+    private AdminSeeder adminSeeder;
+
+    @BeforeEach
+    void setup() {
+        adminProperties = new AdminProperties();
+        adminProperties.setUsername("AdminUser");
+        adminProperties.setEmail("ADMIN@moviebookingapp.com");
+        adminProperties.setPassword("StrongAdmin1");
+
+        environment = new MockEnvironment();
+
+        adminSeeder = new AdminSeeder(userRepository, passwordEncoder, adminProperties, environment);
+    }
+
     @Test
-    void createsAdminWhenNoAdminExists() throws Exception {
+    void createsAdminWhenNoAdminExistsUsingConfiguredCredentials() throws Exception {
 
         when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
-        when(passwordEncoder.encode(any(String.class))).thenReturn("encoded-password");
+        when(passwordEncoder.encode("StrongAdmin1")).thenReturn("encoded-password");
 
         adminSeeder.run();
 
@@ -47,9 +62,11 @@ class AdminSeederTest {
 
         User savedAdmin = userCaptor.getValue();
         assertThat(savedAdmin.getRole()).isEqualTo(UserRole.ADMIN);
+        assertThat(savedAdmin.getUsername()).isEqualTo("adminuser");
+        assertThat(savedAdmin.getEmail()).isEqualTo("admin@moviebookingapp.com");
         assertThat(savedAdmin.getPassword()).isEqualTo("encoded-password");
-        assertThat(savedAdmin.getUsername()).isNotBlank();
-        assertThat(savedAdmin.getEmail()).isNotBlank();
+
+        verify(passwordEncoder).encode("StrongAdmin1");
     }
 
     @Test
@@ -60,5 +77,40 @@ class AdminSeederTest {
         adminSeeder.run();
 
         verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(any(String.class));
+    }
+
+    @Test
+    void allowsDefaultPasswordOnlyInDevProfile() throws Exception {
+
+        adminProperties.setPassword(null);
+        environment.setActiveProfiles("dev");
+
+        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(passwordEncoder.encode("Admin123")).thenReturn("encoded-password");
+
+        adminSeeder.run();
+
+        verify(userRepository).save(userCaptor.capture());
+
+        User savedAdmin = userCaptor.getValue();
+        assertThat(savedAdmin.getPassword()).isEqualTo("encoded-password");
+
+        verify(passwordEncoder).encode("Admin123");
+    }
+
+    @Test
+    void rejectsMissingPasswordOutsideDevProfile() {
+
+        adminProperties.setPassword(null);
+
+        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+
+        assertThatThrownBy(() -> adminSeeder.run())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("ADMIN_PASSWORD must be set outside the dev profile");
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(any(String.class));
     }
 }

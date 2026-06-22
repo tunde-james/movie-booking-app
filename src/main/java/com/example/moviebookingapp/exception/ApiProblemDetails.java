@@ -74,4 +74,17 @@ public final class ApiProblemDetails {
 
         return problemDetail;
     }
+
+    @SuppressWarnings("null")
+    public static ProblemDetail forbidden(String instance, String type, String title, String detail) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+
+        problemDetail.setType(URI.create(PROBLEM_BASE_URL + "/" + type));
+        problemDetail.setTitle(title);
+        problemDetail.setDetail(detail);
+        problemDetail.setInstance(URI.create(instance));
+
+        return problemDetail;
+    }
 }

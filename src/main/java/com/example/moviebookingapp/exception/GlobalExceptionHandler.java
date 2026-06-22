@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -226,5 +227,15 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(), "user-already-exists", "User already exists", ex.getMessage());
 
         return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDeniedException(
+            AccessDeniedException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail =
+                ApiProblemDetails.forbidden(request.getRequestURI(), "access-denied", "Access denied", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.FORBIDDEN, problemDetail);
     }
 }

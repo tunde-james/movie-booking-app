@@ -4,19 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.example.moviebookingapp.config.JwtProperties;
+
 class TokenBlacklistServiceTest {
 
-    @MockitoBean
     private TokenBlacklistService tokenBlacklistService;
 
     @BeforeEach
     void setUp() {
-        tokenBlacklistService = new TokenBlacklistService(Duration.ofHours(1));
+        JwtProperties jwtProperties = new JwtProperties();
+        jwtProperties.setExpiresIn(Duration.ofHours(1));
+
+        tokenBlacklistService = new TokenBlacklistService(jwtProperties);
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.StringUtils;
 
 import com.example.moviebookingapp.dtos.auth.LoginReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginResDto;
@@ -48,7 +49,13 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal Jwt jwt) {
 
-        authService.logout(jwt.getId());
+        String jti = jwt.getId();
+
+        if(!StringUtils.hasText(jti)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        authService.logout(jti);
 
         return ResponseEntity.noContent().build();
     }

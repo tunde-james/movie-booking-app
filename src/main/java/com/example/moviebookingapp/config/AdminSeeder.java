@@ -1,9 +1,14 @@
 package com.example.moviebookingapp.config;
 
+import java.util.Locale;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,16 +23,22 @@ public class AdminSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminSeeder.class);
 
-    private static final String DEFAULT_ADMIN_USERNAME = "admin";
-    private static final String DEFAULT_ADMIN_EMAIL = "admin@moviebookingapp.com";
-    private static final String DEFAULT_ADMIN_PASSWORD = "Admin123";
+    private static final String DEV_DEFAULT_ADMIN_PASSWORD = "Admin123";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AdminProperties adminProperties;
+    private final Environment environment;
 
-    public AdminSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AdminSeeder(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            AdminProperties adminProperties,
+            Environment environment) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.adminProperties = adminProperties;
+        this.environment = environment;
     }
 
     @Override
@@ -38,14 +49,34 @@ public class AdminSeeder implements CommandLineRunner {
             return;
         }
 
+        String adminPassword = resolveAdminPassword();
+
         User admin = new User();
-        admin.setUsername(DEFAULT_ADMIN_USERNAME);
-        admin.setEmail(DEFAULT_ADMIN_EMAIL);
-        admin.setPassword(passwordEncoder.encode(DEFAULT_ADMIN_PASSWORD));
+        admin.setUsername(normalizeCredential(adminProperties.getUsername()));
+        admin.setEmail(normalizeCredential(adminProperties.getEmail()));
+        admin.setPassword(passwordEncoder.encode(adminPassword));
         admin.setRole(UserRole.ADMIN);
 
         userRepository.save(admin);
 
-        log.info("Default admin user created with username: {}", DEFAULT_ADMIN_USERNAME);
+        log.info("Default admin user created with username: {}", admin.getUsername());
+    }
+
+    private String resolveAdminPassword() {
+
+        if (StringUtils.hasText(adminProperties.getPassword())) {
+            return adminProperties.getPassword();
+        }
+
+        if (environment.acceptsProfiles(Profiles.of("dev"))) {
+            log.warn("Using default admin password because ADMIN_PASSWORD is not set. Do not use this outside dev.");
+            return DEV_DEFAULT_ADMIN_PASSWORD;
+        }
+
+        throw new IllegalStateException("ADMIN_PASSWORD must be set outside the dev profile");
+    }
+
+    private String normalizeCredential(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 }

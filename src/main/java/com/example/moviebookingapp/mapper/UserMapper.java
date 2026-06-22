@@ -2,7 +2,6 @@ package com.example.moviebookingapp.mapper;
 
 import java.util.List;
 
-import org.mapstruct.AfterMapping;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -37,20 +36,4 @@ public interface UserMapper {
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "password", ignore = true)
     void updateEntityFromDto(UserReqDto req, @MappingTarget User user);
-
-    @AfterMapping
-    default void normalizeFields(@MappingTarget User user) {
-
-        if (user.getUsername() != null) {
-            user.setUsername(user.getUsername().trim().toLowerCase());
-        }
-
-        if (user.getEmail() != null) {
-            user.setEmail(user.getEmail().trim().toLowerCase());
-        }
-        
-        if (user.getPhoneNumber() != null) {
-            user.setPhoneNumber(user.getPhoneNumber().trim());
-        }
-    }
 }

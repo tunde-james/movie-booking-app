@@ -1,5 +1,7 @@
 package com.example.moviebookingapp.service;
 
+import java.util.Locale;
+
 import jakarta.transaction.Transactional;
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -53,16 +55,18 @@ public class AuthService {
     @Transactional
     public RegisterResDto register(RegisterReqDto reqDto) {
 
-        if (userRepository.existsByEmail(reqDto.email())) {
-            throw new UserAlreadyExistsException("Email already exists: " + reqDto.email());
+        RegisterReqDto normalizedReqDto = normalizeRegisterRequest(reqDto);
+
+        if (userRepository.existsByEmail(normalizedReqDto.email())) {
+            throw new UserAlreadyExistsException("Email already exists: " + normalizedReqDto.email());
         }
 
-        if (userRepository.existsByUsername(reqDto.username())) {
-            throw new UserAlreadyExistsException("Username already exists: " + reqDto.username());
+        if (userRepository.existsByUsername(normalizedReqDto.username())) {
+            throw new UserAlreadyExistsException("Username already exists: " + normalizedReqDto.username());
         }
 
-        User user = userMapper.toEntity(reqDto);
-        user.setPassword(passwordEncoder.encode(reqDto.password()));
+        User user = userMapper.toEntity(normalizedReqDto);
+        user.setPassword(passwordEncoder.encode(normalizedReqDto.password()));
         user.setRole(UserRole.CUSTOMER);
 
         User savedUser = userRepository.save(user);
@@ -94,5 +98,38 @@ public class AuthService {
 
     public void logout(String jti) {
         tokenBlacklistService.blacklist(jti);
+    }
+
+    private RegisterReqDto normalizeRegisterRequest(RegisterReqDto reqDto) {
+
+        return new RegisterReqDto(
+                normalizeUsername(reqDto.username()),
+                normalizeEmail(reqDto.email()),
+                normalizeOptionalText(reqDto.phoneNumber()),
+                reqDto.password());
+    }
+
+    private String normalizeUsername(String username) {
+
+        return normalizeRequiredText(username).toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeEmail(String email) {
+
+        return normalizeRequiredText(email).toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeRequiredText(String value) {
+
+        return value == null ? null : value.trim();
+    }
+
+    private String normalizeOptionalText(String value) {
+
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

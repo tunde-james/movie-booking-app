@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
+import org.springframework.security.access.AccessDeniedException;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -37,6 +39,7 @@ import com.example.moviebookingapp.mapper.BookingMapper;
 import com.example.moviebookingapp.repository.BookingRepository;
 import com.example.moviebookingapp.repository.ShowRepository;
 import com.example.moviebookingapp.repository.UserRepository;
+import com.example.moviebookingapp.security.BookingAccessContext;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
@@ -122,13 +125,143 @@ class BookingServiceTest {
     }
 
     @Test
-    void createBookingReturnsNotFoundWhenUserDoesNotExist() {
+    void authenticatedCreateIgnoresRequestBodyUserIdAndUsesJwtUserId() {
 
-        BookingReqDto request = accountBookingRequest(99L, 10L, 2);
+        BookingReqDto request = accountBookingRequest(999L, 10L, 2);
+        BookingReqDto expectedMappedRequest = accountBookingRequest(42L, 10L, 2);
+        BookingAccessContext accessContext = new BookingAccessContext(42L, false);
+
+        User authenticatedUser = new User();
+        setId(authenticatedUser, 42L);
+
+        Show show = new Show();
+        show.setStatus(ShowStatus.SCHEDULED);
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(50);
+        show.setPricePerTicket(new BigDecimal("3500.00"));
+
+        Booking bookingToSave = new Booking();
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.PENDING,
+                null,
+                GUEST_TOKEN);
+
+        when(userRepository.findById(42L)).thenReturn(Optional.of(authenticatedUser));
+        when(showRepository.findById(10L)).thenReturn(Optional.of(show));
+        when(bookingMapper.toEntity(
+                        eq(expectedMappedRequest),
+                        eq(authenticatedUser),
+                        eq(show),
+                        eq(BookingStatus.PENDING),
+                        eq(new BigDecimal("3500.00")),
+                        eq(new BigDecimal("7000.00")),
+                        any(OffsetDateTime.class),
+                        any(String.class)))
+                .thenReturn(bookingToSave);
+        when(bookingRepository.save(bookingToSave)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.createBooking(request, accessContext);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(userRepository).findById(42L);
+        verify(userRepository, never()).findById(999L);
+        verify(bookingMapper)
+                .toEntity(
+                        eq(expectedMappedRequest),
+                        eq(authenticatedUser),
+                        eq(show),
+                        eq(BookingStatus.PENDING),
+                        eq(new BigDecimal("3500.00")),
+                        eq(new BigDecimal("7000.00")),
+                        any(OffsetDateTime.class),
+                        any(String.class));
+    }
+
+    @Test
+    void guestCreateIgnoresRequestBodyUserIdAndCreatesGuestBooking() {
+
+        BookingReqDto request = accountBookingRequest(999L, 10L, 2);
+        BookingReqDto expectedMappedRequest = guestBookingRequest(10L, 2);
+        BookingAccessContext accessContext = BookingAccessContext.guest();
+
+        Show show = new Show();
+        show.setStatus(ShowStatus.SCHEDULED);
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(50);
+        show.setPricePerTicket(new BigDecimal("3500.00"));
+
+        Booking bookingToSave = new Booking();
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.PENDING,
+                null,
+                GUEST_TOKEN);
+
+        when(showRepository.findById(10L)).thenReturn(Optional.of(show));
+        when(bookingMapper.toEntity(
+                        eq(expectedMappedRequest),
+                        eq(null),
+                        eq(show),
+                        eq(BookingStatus.PENDING),
+                        eq(new BigDecimal("3500.00")),
+                        eq(new BigDecimal("7000.00")),
+                        any(OffsetDateTime.class),
+                        any(String.class)))
+                .thenReturn(bookingToSave);
+        when(bookingRepository.save(bookingToSave)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.createBooking(request, accessContext);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(userRepository, never()).findById(any(Long.class));
+        verify(bookingMapper)
+                .toEntity(
+                        eq(expectedMappedRequest),
+                        eq(null),
+                        eq(show),
+                        eq(BookingStatus.PENDING),
+                        eq(new BigDecimal("3500.00")),
+                        eq(new BigDecimal("7000.00")),
+                        any(OffsetDateTime.class),
+                        any(String.class));
+    }
+
+    @Test
+    void createBookingReturnsNotFoundWhenAuthenticatedUserDoesNotExist() {
+
+        BookingReqDto request = guestBookingRequest(10L, 2);
+        BookingAccessContext accessContext = new BookingAccessContext(99L, false);
 
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> bookingService.createBooking(request))
+        assertThatThrownBy(() -> bookingService.createBooking(request, accessContext))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with ID: 99");
 
@@ -477,6 +610,25 @@ class BookingServiceTest {
     }
 
     @Test
+    void confirmBookingRejectsInvalidGuestToken() {
+
+        Long bookingId = 100L;
+
+        Booking booking = new Booking();
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setGuestAccessToken(GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, "wrong-token"))
+                .isInstanceOf(InvalidBookingRequestException.class)
+                .hasMessage("Guest booking token is invalid");
+
+        verify(showRepository, never()).findByIdWithPessimisticWriteLock(any(Long.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
     void cancelBookingCancelsPendingBookingWithoutChangingShowCapacity() {
 
         Long bookingId = 100L;
@@ -661,6 +813,104 @@ class BookingServiceTest {
     }
 
     @Test
+    void authenticatedCustomerCanViewOwnBookingWithoutGuestToken() {
+
+        Long bookingId = 100L;
+
+        User user = new User();
+        setId(user, 42L);
+
+        Booking booking = new Booking();
+        booking.setUser(user);
+
+        BookingAccessContext accessContext = new BookingAccessContext(42L, false);
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(bookingMapper.toDto(booking)).thenReturn(response);
+
+        BookingResDto result = bookingService.getBookingById(bookingId, null, accessContext);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(bookingMapper).toDto(booking);
+    }
+
+    @Test
+    void authenticatedCustomerCannotViewAnotherUsersBooking() {
+
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+
+        BookingAccessContext accessContext = new BookingAccessContext(99L, false);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.getBookingById(bookingId, null, accessContext))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("You do not have access to this booking");
+
+        verify(bookingMapper, never()).toDto(any(Booking.class));
+    }
+
+    @Test
+    void adminCanViewAnyBookingWithoutGuestToken() {
+
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+
+        BookingAccessContext accessContext = new BookingAccessContext(99L, true);
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(bookingMapper.toDto(booking)).thenReturn(response);
+
+        BookingResDto result = bookingService.getBookingById(bookingId, null, accessContext);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(bookingMapper).toDto(booking);
+    }
+
+    @Test
     void getBookingByIdRejectsInvalidGuestToken() {
 
         Long bookingId = 100L;
@@ -688,25 +938,6 @@ class BookingServiceTest {
                 .hasMessage("Booking not found with ID: 999");
 
         verify(bookingMapper, never()).toDto(any(Booking.class));
-    }
-
-    @Test
-    void confirmBookingRejectsInvalidGuestToken() {
-
-        Long bookingId = 100L;
-
-        Booking booking = new Booking();
-        booking.setStatus(BookingStatus.PENDING);
-        booking.setGuestAccessToken(GUEST_TOKEN);
-
-        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
-
-        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, "wrong-token"))
-                .isInstanceOf(InvalidBookingRequestException.class)
-                .hasMessage("Guest booking token is invalid");
-
-        verify(showRepository, never()).findByIdWithPessimisticWriteLock(any(Long.class));
-        verify(bookingRepository, never()).save(any(Booking.class));
     }
 
     private static void setId(BaseEntity entity, Long id) {

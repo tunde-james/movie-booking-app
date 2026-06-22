@@ -65,6 +65,37 @@ class AuthServiceTest {
     private AuthService authService;
 
     @Test
+    void registerNormalizesUsernameEmailAndPhoneNumberBeforeCheckingAndSaving() {
+
+        RegisterReqDto request =
+                new RegisterReqDto("  JohnDoe  ", "  JOHN@EXAMPLE.COM  ", "  +2348012345678  ", "Password1");
+
+        RegisterReqDto normalizedRequest =
+                new RegisterReqDto("johndoe", "john@example.com", "+2348012345678", "Password1");
+
+        User mappedUser = user("johndoe", "john@example.com", "+2348012345678");
+        User savedUser = savedUser(1L, "johndoe", "john@example.com", "+2348012345678");
+
+        when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("johndoe")).thenReturn(false);
+        when(userMapper.toEntity(normalizedRequest)).thenReturn(mappedUser);
+        when(passwordEncoder.encode("Password1")).thenReturn("encoded-password");
+        when(userRepository.save(mappedUser)).thenReturn(savedUser);
+        when(jwtService.generateToken(any(AuthenticatedUser.class))).thenReturn("jwt-token");
+        when(jwtProperties.getExpiresIn()).thenReturn(Duration.ofHours(1));
+
+        RegisterResDto result = authService.register(request);
+
+        assertThat(result.username()).isEqualTo("johndoe");
+        assertThat(result.email()).isEqualTo("john@example.com");
+
+        verify(userRepository).existsByEmail("john@example.com");
+        verify(userRepository).existsByUsername("johndoe");
+        verify(userMapper).toEntity(normalizedRequest);
+        verify(userRepository).save(mappedUser);
+    }
+
+    @Test
     void registerCreatesCustomerWithEncodedPasswordAndReturnsToken() {
 
         RegisterReqDto request = new RegisterReqDto("johndoe", "john@example.com", "+2348012345678", "Password1");

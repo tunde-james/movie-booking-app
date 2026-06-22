@@ -1,6 +1,5 @@
 package com.example.moviebookingapp.config;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 
@@ -23,6 +22,9 @@ import lombok.Setter;
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
 
+    private static final int MIN_HMAC_SECRET_BYTES = 32;
+    private static final String HMAC_SHA_256 = "HmacSHA256";
+
     private String secret;
     private String issuer;
     private Duration expiresIn = Duration.ofHours(1);
@@ -31,18 +33,25 @@ public class JwtProperties {
     void validate() {
 
         Assert.hasText(secret, "app.jwt.secret must be set and cannot be blank");
-        Assert.isTrue(secret.getBytes(StandardCharsets.UTF_8).length >= 32, "app.jwt.secret must be at least 32 bytes");
+
+        byte[] decodedSecret = decodeSecret();
+        Assert.isTrue(decodedSecret.length >= MIN_HMAC_SECRET_BYTES, "app.jwt.secret must decode to at least 32 bytes");
+
         Assert.hasText(issuer, "app.jwt.issuer must be set and cannot be blank");
-        Assert.notNull(expiresIn, "app.jwt.expiration must be set");
+        Assert.notNull(expiresIn, "app.jwt.expires-in must be set");
     }
 
     public SecretKeySpec getSecretKey() {
 
-        return new SecretKeySpec(getDecodedSecret(), "HmacSHA256");
+        return new SecretKeySpec(decodeSecret(), HMAC_SHA_256);
     }
 
-    private byte[] getDecodedSecret() {
+    private byte[] decodeSecret() {
 
-        return Base64.getDecoder().decode(secret);
+        try {
+            return Base64.getDecoder().decode(secret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("app.jwt.secret must be valid Base64", ex);
+        }
     }
 }
