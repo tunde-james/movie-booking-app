@@ -1,0 +1,131 @@
+{
+  "environment": {
+    "baseUrl": "http://localhost:8080",
+    "adminUsername": "admin",
+    "adminPassword": "Admin123",
+    "runSuffix": "001",
+    "customerUsername": "ada.customer001",
+    "customerEmail": "ada.customer+001@example.com",
+    "customerPassword": "Password1",
+    "otherCustomerUsername": "bayo.customer001",
+    "otherCustomerEmail": "bayo.customer+001@example.com",
+    "otherCustomerPassword": "Password1",
+    "showStartTime": "2027-02-15T18:00:00+01:00",
+    "showEndTime": "2027-02-15T20:20:00+01:00"
+  },
+  "auth": {
+    "adminLogin": {
+      "usernameOrEmail": "admin",
+      "password": "Admin123"
+    },
+    "registerCustomer": {
+      "username": "ada.customer001",
+      "email": "ada.customer+001@example.com",
+      "phoneNumber": "+2348012345678",
+      "password": "Password1"
+    },
+    "customerLogin": {
+      "usernameOrEmail": "ada.customer001",
+      "password": "Password1"
+    },
+    "registerOtherCustomer": {
+      "username": "bayo.customer001",
+      "email": "bayo.customer+001@example.com",
+      "phoneNumber": "+2348012345679",
+      "password": "Password1"
+    },
+    "otherCustomerLogin": {
+      "usernameOrEmail": "bayo.customer001",
+      "password": "Password1"
+    }
+  },
+  "movies": {
+    "create": {
+      "title": "Codex Drift 001",
+      "description": "A test movie used for manual API verification.",
+      "genre": "SCI_FI",
+      "durationInMinutes": 140,
+      "releaseDate": "2027-01-10",
+      "language": "ENGLISH",
+      "rating": "PG_13",
+      "movieStatus": "NOW_SHOWING",
+      "posterUrl": "https://example.com/posters/codex-drift.jpg"
+    },
+    "update": {
+      "title": "Codex Drift 001 Updated",
+      "description": "Updated manual API verification movie.",
+      "genre": "SCI_FI",
+      "durationInMinutes": 142,
+      "releaseDate": "2027-01-10",
+      "language": "ENGLISH",
+      "rating": "PG_13",
+      "movieStatus": "NOW_SHOWING",
+      "posterUrl": "https://example.com/posters/codex-drift-updated.jpg"
+    }
+  },
+  "cinemas": {
+    "create": {
+      "name": "Nova Lekki 001",
+      "address": "12 Admiralty Way",
+      "city": "Lagos"
+    },
+    "update": {
+      "name": "Nova Lekki 001 Updated",
+      "address": "14 Admiralty Way",
+      "city": "Lagos"
+    }
+  },
+  "auditoriums": {
+    "create": {
+      "name": "Screen 1 001",
+      "type": "IMAX",
+      "capacity": 120
+    },
+    "update": {
+      "name": "Screen 1 001 Updated",
+      "type": "IMAX",
+      "capacity": 130
+    }
+  },
+  "shows": {
+    "create": {
+      "movieId": 1,
+      "auditoriumId": 1,
+      "startTime": "2027-02-15T18:00:00+01:00",
+      "endTime": "2027-02-15T20:20:00+01:00",
+      "pricePerTicket": 4500.00
+    },
+    "update": {
+      "movieId": 1,
+      "auditoriumId": 1,
+      "startTime": "2027-02-15T18:00:00+01:00",
+      "endTime": "2027-02-15T20:20:00+01:00",
+      "pricePerTicket": 5000.00
+    }
+  },
+  "bookings": {
+    "guestCreate": {
+      "userId": 999,
+      "showId": 1,
+      "firstName": "Guest",
+      "lastName": "Customer",
+      "email": "guest.customer+001@example.com",
+      "phoneNumber": "+2348011112222",
+      "ticketQuantity": 2
+    },
+    "customerCreate": {
+      "userId": 999,
+      "showId": 1,
+      "firstName": "Ada",
+      "lastName": "Customer",
+      "email": "ada.customer+001@example.com",
+      "phoneNumber": "+2348022223333",
+      "ticketQuantity": 1
+    }
+  },
+  "headers": {
+    "adminAuthorization": "Bearer <admin-access-token>",
+    "customerAuthorization": "Bearer <customer-access-token>",
+    "guestBookingToken": "X-Guest-Booking-Token: <guest-access-token>"
+  }
+}

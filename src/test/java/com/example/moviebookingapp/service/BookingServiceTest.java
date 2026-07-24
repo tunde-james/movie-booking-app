@@ -192,6 +192,248 @@ class BookingServiceTest {
     }
 
     @Test
+    void authenticatedCustomerCanConfirmOwnBookingWithoutGuestToken() {
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Show show = new Show();
+        setId(show, 10L);
+        show.setStatus(ShowStatus.SCHEDULED);
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(50);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        BookingAccessContext accessContext = new BookingAccessContext(42L, false);
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
+        when(bookingRepository.save(booking)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.confirmBooking(bookingId, null, accessContext);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(show.getAvailableCapacity()).isEqualTo(48);
+    }
+
+    @Test
+    void authenticatedCustomerCannotConfirmAnotherUsersBooking() {
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+        booking.setStatus(BookingStatus.PENDING);
+
+        BookingAccessContext accessContext = new BookingAccessContext(99L, false);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.confirmBooking(bookingId, null, accessContext))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("You do not have access to this booking");
+
+        verify(showRepository, never()).findByIdWithPessimisticWriteLock(any(Long.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verify(bookingMapper, never()).toDto(any(Booking.class));
+    }
+
+    @Test
+    void adminCanConfirmAnyBookingWithoutGuestToken() {
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Show show = new Show();
+        setId(show, 10L);
+        show.setStatus(ShowStatus.SCHEDULED);
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(50);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        BookingAccessContext accessContext = new BookingAccessContext(1L, true);
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
+        when(bookingRepository.save(booking)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.confirmBooking(bookingId, null, accessContext);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(show.getAvailableCapacity()).isEqualTo(48);
+    }
+
+    @Test
+    void authenticatedCustomerCanCancelOwnBookingWithoutGuestToken() {
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Show show = new Show();
+        setId(show, 10L);
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(48);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        BookingAccessContext accessContext = new BookingAccessContext(42L, false);
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
+        when(bookingRepository.save(booking)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.cancelBooking(bookingId, null, accessContext);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(show.getAvailableCapacity()).isEqualTo(50);
+    }
+
+    @Test
+    void authenticatedCustomerCannotCancelAnotherUsersBooking() {
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+        booking.setStatus(BookingStatus.CONFIRMED);
+
+        BookingAccessContext accessContext = new BookingAccessContext(99L, false);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> bookingService.cancelBooking(bookingId, null, accessContext))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("You do not have access to this booking");
+
+        verify(showRepository, never()).findByIdWithPessimisticWriteLock(any(Long.class));
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verify(bookingMapper, never()).toDto(any(Booking.class));
+    }
+
+    @Test
+    void adminCanCancelAnyBookingWithoutGuestToken() {
+        Long bookingId = 100L;
+
+        User bookingOwner = new User();
+        setId(bookingOwner, 42L);
+
+        Show show = new Show();
+        setId(show, 10L);
+        show.setStartTime(OffsetDateTime.now().plusDays(1));
+        show.setAvailableCapacity(48);
+
+        Booking booking = new Booking();
+        booking.setUser(bookingOwner);
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setShow(show);
+        booking.setTicketQuantity(2);
+
+        BookingAccessContext accessContext = new BookingAccessContext(1L, true);
+        Booking savedBooking = new Booking();
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(showRepository.findByIdWithPessimisticWriteLock(10L)).thenReturn(Optional.of(show));
+        when(bookingRepository.save(booking)).thenReturn(savedBooking);
+        when(bookingMapper.toDto(savedBooking)).thenReturn(response);
+
+        BookingResDto result = bookingService.cancelBooking(bookingId, null, accessContext);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(show.getAvailableCapacity()).isEqualTo(50);
+    }
+
+    @Test
     void guestCreateIgnoresRequestBodyUserIdAndCreatesGuestBooking() {
 
         BookingReqDto request = accountBookingRequest(999L, 10L, 2);
