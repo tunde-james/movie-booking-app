@@ -14,11 +14,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.util.StringUtils;
 
+import com.example.moviebookingapp.dtos.auth.ChangePasswordReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginResDto;
 import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.auth.RegisterResDto;
 import com.example.moviebookingapp.service.AuthService;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -44,6 +48,17 @@ public class AuthController {
     public LoginResDto login(@Valid @RequestBody LoginReqDto reqDto) {
 
         return authService.login(reqDto);
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordReqDto reqDto, @AuthenticationPrincipal Jwt jwt) {
+        
+        Object userIdClaim = jwt.getClaim("userId");
+        Long userId = userIdClaim instanceof Number number ? number.longValue() : null;
+
+        authService.changePassword(userId, reqDto);
+
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/logout")

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -23,13 +24,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.example.moviebookingapp.config.JwtProperties;
+import com.example.moviebookingapp.dtos.auth.ChangePasswordReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginResDto;
 import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.auth.RegisterResDto;
 import com.example.moviebookingapp.entity.User;
 import com.example.moviebookingapp.enums.UserRole;
+import com.example.moviebookingapp.exception.InvalidPasswordChangeException;
 import com.example.moviebookingapp.exception.UserAlreadyExistsException;
+import com.example.moviebookingapp.exception.UserNotFoundException;
 import com.example.moviebookingapp.mapper.UserMapper;
 import com.example.moviebookingapp.repository.UserRepository;
 import com.example.moviebookingapp.security.AuthenticatedUser;
@@ -214,6 +218,68 @@ class AuthServiceTest {
                 .hasMessage("Invalid username/email or password");
 
         verify(jwtService, never()).generateToken(any(AuthenticatedUser.class));
+    }
+
+    @Test
+    void changePasswordUpdatesEncodedPasswordWhenCurrentPasswordMatches() {
+
+        ChangePasswordReqDto request = new ChangePasswordReqDto("OldPassword1", "NewPassword1");
+        User user = savedUser(1L, "johndoe", "john@example.com", "+2348012345678");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("OldPassword1", "encoded-password")).thenReturn(true);
+        when(passwordEncoder.encode("NewPassword1")).thenReturn("new-encoded-password");
+
+        authService.changePassword(1L, request);
+
+        assertThat(user.getPassword()).isEqualTo("new-encoded-password");
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void changePasswordRejectsWrongCurrentPassword() {
+
+        ChangePasswordReqDto request = new ChangePasswordReqDto("WrongPassword1", "NewPassword1");
+        User user = savedUser(1L, "johndoe", "john@example.com", "+2348012345678");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("WrongPassword1", "encoded-password")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.changePassword(1L, request))
+                .isInstanceOf(InvalidPasswordChangeException.class)
+                .hasMessage("Current password is incorrect");
+
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void changePasswordReturnsNotFoundWhenUserDoesNotExist() {
+
+        ChangePasswordReqDto request = new ChangePasswordReqDto("OldPassword1", "NewPassword1");
+
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.changePassword(99L, request))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessage("User not found with ID: 99");
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void changePasswordRejectsMissingUserId() {
+
+        ChangePasswordReqDto request = new ChangePasswordReqDto("OldPassword1", "NewPassword1");
+
+        assertThatThrownBy(() -> authService.changePassword(null, request))
+                .isInstanceOf(InvalidPasswordChangeException.class)
+                .hasMessage("Authenticated user is required");
+
+        verify(userRepository, never()).findById(any());
     }
 
     @Test

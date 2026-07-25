@@ -238,4 +238,14 @@ public class GlobalExceptionHandler {
 
         return ApiProblemDetails.response(HttpStatus.FORBIDDEN, problemDetail);
     }
+
+    @ExceptionHandler(InvalidPasswordChangeException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidPasswordChangeException(
+            InvalidPasswordChangeException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.badRequest(
+                request.getRequestURI(), "invalid-password-change", "Invalid password change", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.BAD_REQUEST, problemDetail);
+    }
 }

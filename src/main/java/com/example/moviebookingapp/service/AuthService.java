@@ -1,6 +1,7 @@
 package com.example.moviebookingapp.service;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import jakarta.transaction.Transactional;
 
@@ -11,13 +12,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.moviebookingapp.config.JwtProperties;
+import com.example.moviebookingapp.dtos.auth.ChangePasswordReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginResDto;
 import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.auth.RegisterResDto;
 import com.example.moviebookingapp.entity.User;
 import com.example.moviebookingapp.enums.UserRole;
+import com.example.moviebookingapp.exception.InvalidPasswordChangeException;
 import com.example.moviebookingapp.exception.UserAlreadyExistsException;
+import com.example.moviebookingapp.exception.UserNotFoundException;
 import com.example.moviebookingapp.mapper.UserMapper;
 import com.example.moviebookingapp.repository.UserRepository;
 import com.example.moviebookingapp.security.AuthenticatedUser;
@@ -94,6 +98,28 @@ public class AuthService {
                 jwtService.generateToken(user),
                 "Bearer",
                 jwtProperties.getExpiresIn().toSeconds());
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordReqDto reqDto) {
+
+        if (userId == null) {
+            throw new InvalidPasswordChangeException("Authenticated user is required");
+        }
+
+        ChangePasswordReqDto validatedReqDto = Objects.requireNonNull(reqDto, "Password change request cannot be null");
+
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        if (!passwordEncoder.matches(validatedReqDto.currentPassword(), user.getPassword())) {
+            throw new InvalidPasswordChangeException("Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(validatedReqDto.newPassword()));
+
+        userRepository.save(user);
     }
 
     public void logout(String jti) {

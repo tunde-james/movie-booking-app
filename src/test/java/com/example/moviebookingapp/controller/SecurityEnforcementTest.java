@@ -264,6 +264,15 @@ class SecurityEnforcementTest {
 
             mockMvc.perform(delete("/api/v1/shows/1")).andExpect(status().isUnauthorized());
         }
+
+        @Test
+        void changePasswordRequiresAuthentication() throws Exception {
+
+            mockMvc.perform(put("/api/v1/auth/password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     @Nested

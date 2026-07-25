@@ -2,11 +2,14 @@ package com.example.moviebookingapp.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -26,11 +29,13 @@ import org.junit.jupiter.api.Test;
 
 import com.example.moviebookingapp.config.JwtProperties;
 import com.example.moviebookingapp.config.SecurityConfig;
+import com.example.moviebookingapp.dtos.auth.ChangePasswordReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginReqDto;
 import com.example.moviebookingapp.dtos.auth.LoginResDto;
 import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.auth.RegisterResDto;
 import com.example.moviebookingapp.exception.GlobalExceptionHandler;
+import com.example.moviebookingapp.exception.InvalidPasswordChangeException;
 import com.example.moviebookingapp.exception.UserAlreadyExistsException;
 import com.example.moviebookingapp.security.TokenBlacklistService;
 import com.example.moviebookingapp.service.AuthService;
@@ -250,6 +255,70 @@ class AuthControllerApiContractTest {
                 .andExpect(jsonPath("$.username").value("janedoe"))
                 .andExpect(jsonPath("$.email").value("jane@example.com"))
                 .andExpect(jsonPath("$.accessToken").value("jwt-token-2"));
+    }
+
+    @Test
+    void changePasswordReturnsNoContentForAuthenticatedUser() throws Exception {
+
+        mockMvc.perform(put("/api/v1/auth/password")
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 42L)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "currentPassword": "OldPassword1",
+                      "newPassword": "NewPassword1"
+                    }
+                    """))
+                .andExpect(status().isNoContent());
+
+        verify(authService).changePassword(eq(42L), any(ChangePasswordReqDto.class));
+    }
+
+    @Test
+    void changePasswordReturnsValidationErrorsForInvalidRequest() throws Exception {
+
+        mockMvc.perform(put("/api/v1/auth/password")
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 42L)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "currentPassword": "",
+                      "newPassword": "weak"
+                    }
+                    """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/validation-error"))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errors").isArray());
+
+        verify(authService, never()).changePassword(any(), any(ChangePasswordReqDto.class));
+    }
+
+    @Test
+    void changePasswordReturnsBadRequestWhenCurrentPasswordIsIncorrect() throws Exception {
+
+        doThrow(new InvalidPasswordChangeException("Current password is incorrect"))
+                .when(authService)
+                .changePassword(eq(42L), any(ChangePasswordReqDto.class));
+
+        mockMvc.perform(put("/api/v1/auth/password")
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 42L)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "currentPassword": "WrongPassword1",
+                      "newPassword": "NewPassword1"
+                    }
+                    """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://moviebookingapp/problems/invalid-password-change"))
+                .andExpect(jsonPath("$.title").value("Invalid password change"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Current password is incorrect"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/auth/password"));
     }
 
     @Test
