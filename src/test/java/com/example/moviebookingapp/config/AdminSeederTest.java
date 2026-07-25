@@ -99,6 +99,7 @@ class AdminSeederTest {
         adminSeeder.run();
 
         verify(userRepository).saveAndFlush(any(User.class));
+        verify(userRepository, never()).save(any(User.class));
         verify(passwordEncoder).encode("StrongAdmin1");
     }
 

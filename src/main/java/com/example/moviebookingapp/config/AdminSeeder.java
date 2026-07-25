@@ -69,11 +69,8 @@ public class AdminSeeder implements CommandLineRunner {
             log.info("Default admin user created with username: {}", admin.getUsername());
         } catch (DataIntegrityViolationException ex) {
             log.info("Configured admin user was created concurrently, skipping seeding");
+            return;
         }
-
-        userRepository.save(admin);
-
-        log.info("Default admin user created with username: {}", admin.getUsername());
     }
 
     private String resolveAdminPassword() {
