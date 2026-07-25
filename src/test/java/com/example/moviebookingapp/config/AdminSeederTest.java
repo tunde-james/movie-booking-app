@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
+import static org.mockito.Mockito.times;
 import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -98,7 +98,7 @@ class AdminSeederTest {
 
         adminSeeder.run();
 
-        verify(userRepository).saveAndFlush(any(User.class));
+        verify(userRepository,times(1)).saveAndFlush(any(User.class));
         verify(userRepository, never()).save(any(User.class));
         verify(passwordEncoder).encode("StrongAdmin1");
     }
