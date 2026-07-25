@@ -1093,6 +1093,41 @@ class BookingServiceTest {
     }
 
     @Test
+    void authenticatedCustomerCanViewGuestBookingWithGuestToken() {
+
+        Long bookingId = 100L;
+
+        Booking booking = new Booking();
+        booking.setGuestAccessToken(GUEST_TOKEN);
+
+        BookingAccessContext accessContext = new BookingAccessContext(42L, false);
+
+        BookingResDto response = new BookingResDto(
+                bookingId,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(bookingMapper.toDto(booking)).thenReturn(response);
+
+        BookingResDto result = bookingService.getBookingById(bookingId, GUEST_TOKEN, accessContext);
+
+        assertThat(result).isEqualTo(response);
+
+        verify(bookingMapper).toDto(booking);
+    }
+
+    @Test
     void authenticatedCustomerCannotViewAnotherUsersBooking() {
 
         Long bookingId = 100L;

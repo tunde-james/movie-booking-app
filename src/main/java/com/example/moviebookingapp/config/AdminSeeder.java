@@ -1,11 +1,13 @@
 package com.example.moviebookingapp.config;
 
 import java.util.Locale;
+import java.util.Optional;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -44,18 +46,30 @@ public class AdminSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
-        if (userRepository.existsByRole(UserRole.ADMIN)) {
-            log.debug("Admin user already exists, skipping seeding");
+        String adminUsername = normalizeCredential(adminProperties.getUsername());
+        String adminEmail = normalizeCredential(adminProperties.getEmail());
+
+        Optional<User> existingAdmin = userRepository.findByUsernameOrEmail(adminUsername, adminEmail);
+
+        if (existingAdmin.isPresent()) {
+            log.debug("Configured admin user already exists, skipping seeding");
             return;
         }
 
         String adminPassword = resolveAdminPassword();
 
         User admin = new User();
-        admin.setUsername(normalizeCredential(adminProperties.getUsername()));
-        admin.setEmail(normalizeCredential(adminProperties.getEmail()));
+        admin.setUsername(adminUsername);
+        admin.setEmail(adminEmail);
         admin.setPassword(passwordEncoder.encode(adminPassword));
         admin.setRole(UserRole.ADMIN);
+
+        try {
+            userRepository.saveAndFlush(admin);
+            log.info("Default admin user created with username: {}", admin.getUsername());
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Configured admin user was created concurrently, skipping seeding");
+        }
 
         userRepository.save(admin);
 

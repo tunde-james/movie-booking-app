@@ -233,6 +233,10 @@ public class BookingService {
                 return;
             }
 
+            if (guestTokenMatches(booking, guestAccessToken)) {
+                return;
+            }
+
             throw new AccessDeniedException("You do not have access to this booking");
         }
 
@@ -292,11 +296,20 @@ public class BookingService {
             throw new InvalidBookingRequestException("Guest booking token is required");
         }
 
-        String savedGuestAccessToken = booking.getGuestAccessToken();
-
-        if (savedGuestAccessToken == null || !constantTimeEquals(savedGuestAccessToken, guestAccessToken.trim())) {
+        if (!guestTokenMatches(booking, guestAccessToken)) {
             throw new InvalidBookingRequestException("Guest booking token is invalid");
         }
+    }
+
+    private boolean guestTokenMatches(Booking booking, String guestAccessToken) {
+
+        if (guestAccessToken == null || guestAccessToken.isBlank()) {
+            return false;
+        }
+
+        String savedGuestAccessToken = booking.getGuestAccessToken();
+
+        return savedGuestAccessToken != null && constantTimeEquals(savedGuestAccessToken, guestAccessToken.trim());
     }
 
     private boolean constantTimeEquals(String a, String b) {

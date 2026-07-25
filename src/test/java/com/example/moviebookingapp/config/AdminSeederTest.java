@@ -7,6 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -51,14 +54,15 @@ class AdminSeederTest {
     }
 
     @Test
-    void createsAdminWhenNoAdminExistsUsingConfiguredCredentials() throws Exception {
+    void createsAdminWhenConfiguredAdminDoesNotExist() throws Exception {
 
-        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(userRepository.findByUsernameOrEmail("adminuser", "admin@moviebookingapp.com"))
+                .thenReturn(Optional.empty());
         when(passwordEncoder.encode("StrongAdmin1")).thenReturn("encoded-password");
 
         adminSeeder.run();
 
-        verify(userRepository).save(userCaptor.capture());
+        verify(userRepository).saveAndFlush(userCaptor.capture());
 
         User savedAdmin = userCaptor.getValue();
         assertThat(savedAdmin.getRole()).isEqualTo(UserRole.ADMIN);
@@ -70,14 +74,32 @@ class AdminSeederTest {
     }
 
     @Test
-    void skipsCreationWhenAdminAlreadyExists() throws Exception {
+    void skipsCreationWhenConfiguredAdminUserAlreadyExists() throws Exception {
 
-        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(true);
+        User existingUser = new User();
+
+        when(userRepository.findByUsernameOrEmail("adminuser", "admin@moviebookingapp.com"))
+                .thenReturn(Optional.of(existingUser));
 
         adminSeeder.run();
 
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
         verify(passwordEncoder, never()).encode(any(String.class));
+    }
+
+    @Test
+    void treatsConcurrentAdminCreationAsNoOp() throws Exception {
+
+        when(userRepository.findByUsernameOrEmail("adminuser", "admin@moviebookingapp.com"))
+                .thenReturn(Optional.empty());
+        when(passwordEncoder.encode("StrongAdmin1")).thenReturn("encoded-password");
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate admin user"));
+
+        adminSeeder.run();
+
+        verify(userRepository).saveAndFlush(any(User.class));
+        verify(passwordEncoder).encode("StrongAdmin1");
     }
 
     @Test
@@ -86,12 +108,13 @@ class AdminSeederTest {
         adminProperties.setPassword(null);
         environment.setActiveProfiles("dev");
 
-        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(userRepository.findByUsernameOrEmail("adminuser", "admin@moviebookingapp.com"))
+                .thenReturn(Optional.empty());
         when(passwordEncoder.encode("Admin123")).thenReturn("encoded-password");
 
         adminSeeder.run();
 
-        verify(userRepository).save(userCaptor.capture());
+        verify(userRepository).saveAndFlush(userCaptor.capture());
 
         User savedAdmin = userCaptor.getValue();
         assertThat(savedAdmin.getPassword()).isEqualTo("encoded-password");
@@ -104,13 +127,14 @@ class AdminSeederTest {
 
         adminProperties.setPassword(null);
 
-        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(userRepository.findByUsernameOrEmail("adminuser", "admin@moviebookingapp.com"))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adminSeeder.run())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("ADMIN_PASSWORD must be set outside the dev profile");
 
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
         verify(passwordEncoder, never()).encode(any(String.class));
     }
 }

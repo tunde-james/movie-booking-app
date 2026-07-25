@@ -15,7 +15,6 @@ public class TokenBlacklistService {
     public TokenBlacklistService(JwtProperties jwtProperties) {
         this.blacklistedTokens = Caffeine.newBuilder()
                 .expireAfterWrite(jwtProperties.getExpiresIn())
-                .maximumSize(10_000)
                 .build();
     }
 

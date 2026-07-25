@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -84,7 +85,7 @@ class AuthServiceTest {
         when(userRepository.existsByUsername("johndoe")).thenReturn(false);
         when(userMapper.toEntity(normalizedRequest)).thenReturn(mappedUser);
         when(passwordEncoder.encode("Password1")).thenReturn("encoded-password");
-        when(userRepository.save(mappedUser)).thenReturn(savedUser);
+        when(userRepository.saveAndFlush(mappedUser)).thenReturn(savedUser);
         when(jwtService.generateToken(any(AuthenticatedUser.class))).thenReturn("jwt-token");
         when(jwtProperties.getExpiresIn()).thenReturn(Duration.ofHours(1));
 
@@ -96,7 +97,7 @@ class AuthServiceTest {
         verify(userRepository).existsByEmail("john@example.com");
         verify(userRepository).existsByUsername("johndoe");
         verify(userMapper).toEntity(normalizedRequest);
-        verify(userRepository).save(mappedUser);
+        verify(userRepository).saveAndFlush(mappedUser);
     }
 
     @Test
@@ -111,7 +112,7 @@ class AuthServiceTest {
         when(userRepository.existsByUsername("johndoe")).thenReturn(false);
         when(userMapper.toEntity(request)).thenReturn(mappedUser);
         when(passwordEncoder.encode("Password1")).thenReturn("encoded-password");
-        when(userRepository.save(mappedUser)).thenReturn(savedUser);
+        when(userRepository.saveAndFlush(mappedUser)).thenReturn(savedUser);
         when(jwtService.generateToken(any(AuthenticatedUser.class))).thenReturn("jwt-token");
         when(jwtProperties.getExpiresIn()).thenReturn(Duration.ofHours(1));
 
@@ -130,7 +131,7 @@ class AuthServiceTest {
 
         verify(userMapper).toEntity(request);
         verify(passwordEncoder).encode("Password1");
-        verify(userRepository).save(mappedUser);
+        verify(userRepository).saveAndFlush(mappedUser);
         verify(jwtService).generateToken(any(AuthenticatedUser.class));
     }
 
@@ -177,6 +178,27 @@ class AuthServiceTest {
 
         verify(userRepository).existsByEmail("john@example.com");
         verify(userRepository, never()).existsByUsername(anyString());
+    }
+
+    @Test
+    void registerConvertsDatabaseUniquenessViolationToConflict() {
+
+        RegisterReqDto request = new RegisterReqDto("johndoe", "john@example.com", null, "Password1");
+
+        User mappedUser = user("johndoe", "john@example.com", null);
+
+        when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("johndoe")).thenReturn(false);
+        when(userMapper.toEntity(request)).thenReturn(mappedUser);
+        when(passwordEncoder.encode("Password1")).thenReturn("encoded-password");
+        when(userRepository.saveAndFlush(mappedUser))
+                .thenThrow(new DataIntegrityViolationException("Duplicate username or email"));
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(UserAlreadyExistsException.class)
+                .hasMessage("Username or email already exists");
+
+        verify(jwtService, never()).generateToken(any(AuthenticatedUser.class));
     }
 
     @Test

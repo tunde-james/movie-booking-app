@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import jakarta.transaction.Transactional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -73,7 +74,13 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(normalizedReqDto.password()));
         user.setRole(UserRole.CUSTOMER);
 
-        User savedUser = userRepository.save(user);
+        User savedUser;
+
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException ex) {
+            throw new UserAlreadyExistsException("Username or email already exists");
+        }
 
         String token = jwtService.generateToken(AuthenticatedUser.from(savedUser));
 
