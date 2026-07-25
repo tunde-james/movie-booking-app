@@ -8,12 +8,19 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
+import com.example.moviebookingapp.dtos.auth.RegisterReqDto;
 import com.example.moviebookingapp.dtos.user.UserReqDto;
 import com.example.moviebookingapp.dtos.user.UserResDto;
 import com.example.moviebookingapp.entity.User;
 
 @Mapper(config = BaseMapperConfig.class)
 public interface UserMapper {
+
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "bookings", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "role", ignore = true)
+    User toEntity(RegisterReqDto req);
 
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "bookings", ignore = true)

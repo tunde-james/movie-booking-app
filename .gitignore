@@ -56,3 +56,8 @@ agent-output/
 *.cert
 *.jks
 *.keystore
+
+# Local agent/project planning docs
+AGENTS.md
+CONTEXT.md
+docs/

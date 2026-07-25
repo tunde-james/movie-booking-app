@@ -1,5 +1,6 @@
 package com.example.moviebookingapp.exception;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Objects;
 
@@ -11,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -36,6 +39,19 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ApiProblemDetails.validationError(request.getRequestURI(), errors);
 
         return ApiProblemDetails.response(HttpStatus.BAD_REQUEST, problemDetail);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ProblemDetail> handleBadCredentialsException(
+            BadCredentialsException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail =
+                ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid username/email or password");
+        problemDetail.setType(URI.create("https://moviebookingapp/problems/bad-credentials"));
+        problemDetail.setTitle("Authentication failed");
+        problemDetail.setInstance(URI.create(request.getRequestURI()));
+
+        return ApiProblemDetails.response(HttpStatus.UNAUTHORIZED, problemDetail);
     }
 
     @ExceptionHandler(MovieAlreadyExistsException.class)
@@ -201,5 +217,35 @@ public class GlobalExceptionHandler {
                 "The resource was changed by another request. Please try again.");
 
         return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ProblemDetail> handleUserAlreadyExistsException(
+            UserAlreadyExistsException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.conflict(
+                request.getRequestURI(), "user-already-exists", "User already exists", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.CONFLICT, problemDetail);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDeniedException(
+            AccessDeniedException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail =
+                ApiProblemDetails.forbidden(request.getRequestURI(), "access-denied", "Access denied", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.FORBIDDEN, problemDetail);
+    }
+
+    @ExceptionHandler(InvalidPasswordChangeException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidPasswordChangeException(
+            InvalidPasswordChangeException ex, HttpServletRequest request) {
+
+        ProblemDetail problemDetail = ApiProblemDetails.badRequest(
+                request.getRequestURI(), "invalid-password-change", "Invalid password change", ex.getMessage());
+
+        return ApiProblemDetails.response(HttpStatus.BAD_REQUEST, problemDetail);
     }
 }

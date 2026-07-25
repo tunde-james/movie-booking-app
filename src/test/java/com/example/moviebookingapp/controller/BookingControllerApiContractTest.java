@@ -1,10 +1,13 @@
 package com.example.moviebookingapp.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -41,6 +44,7 @@ import com.example.moviebookingapp.exception.InsufficientShowCapacityException;
 import com.example.moviebookingapp.exception.InvalidBookingRequestException;
 import com.example.moviebookingapp.exception.ShowNotBookableException;
 import com.example.moviebookingapp.exception.UserNotFoundException;
+import com.example.moviebookingapp.security.BookingAccessContext;
 import com.example.moviebookingapp.service.BookingService;
 
 @SuppressWarnings("null")
@@ -93,7 +97,8 @@ class BookingControllerApiContractTest {
                 null,
                 GUEST_TOKEN);
 
-        when(bookingService.createBooking(any(BookingReqDto.class))).thenReturn(response);
+        when(bookingService.createBooking(any(BookingReqDto.class), any(BookingAccessContext.class)))
+                .thenReturn(response);
 
         String requestBody = """
         {
@@ -129,7 +134,7 @@ class BookingControllerApiContractTest {
 
         BookingReqDto reqDto = new BookingReqDto(null, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
-        when(bookingService.createBooking(any(BookingReqDto.class)))
+        when(bookingService.createBooking(any(BookingReqDto.class), any(BookingAccessContext.class)))
                 .thenThrow(new ShowNotBookableException("This show is sold out"));
 
         mockMvc.perform(post("/api/v1/bookings")
@@ -150,7 +155,7 @@ class BookingControllerApiContractTest {
 
         BookingReqDto reqDto = new BookingReqDto(null, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
-        when(bookingService.createBooking(any(BookingReqDto.class)))
+        when(bookingService.createBooking(any(BookingReqDto.class), any(BookingAccessContext.class)))
                 .thenThrow(new InsufficientShowCapacityException("Not enough seats available for this show"));
 
         mockMvc.perform(post("/api/v1/bookings")
@@ -171,7 +176,7 @@ class BookingControllerApiContractTest {
 
         BookingReqDto reqDto = new BookingReqDto(null, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
-        when(bookingService.createBooking(any(BookingReqDto.class)))
+        when(bookingService.createBooking(any(BookingReqDto.class), any(BookingAccessContext.class)))
                 .thenThrow(new InvalidBookingRequestException("Ticket quantity must be greater than zero"));
 
         mockMvc.perform(post("/api/v1/bookings")
@@ -192,7 +197,7 @@ class BookingControllerApiContractTest {
 
         BookingReqDto reqDto = new BookingReqDto(99L, 10L, "Ada", "Lovelace", "ada@example.com", null, 2);
 
-        when(bookingService.createBooking(any(BookingReqDto.class)))
+        when(bookingService.createBooking(any(BookingReqDto.class), any(BookingAccessContext.class)))
                 .thenThrow(new UserNotFoundException("User not found with ID: 99"));
 
         mockMvc.perform(post("/api/v1/bookings")
@@ -256,7 +261,8 @@ class BookingControllerApiContractTest {
                 null,
                 GUEST_TOKEN);
 
-        when(bookingService.confirmBooking(100L, GUEST_TOKEN)).thenReturn(response);
+        when(bookingService.confirmBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
+                .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
                         .header("X-Guest-Booking-Token", GUEST_TOKEN)
@@ -269,14 +275,14 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        verify(bookingService).confirmBooking(100L, GUEST_TOKEN);
+        verify(bookingService).confirmBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class));
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void confirmBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
-        when(bookingService.confirmBooking(999L, GUEST_TOKEN))
+        when(bookingService.confirmBooking(eq(999L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 999L)
@@ -294,7 +300,7 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void confirmBookingReturnsBadRequestWhenBookingIsNotPending() throws Exception {
 
-        when(bookingService.confirmBooking(100L, GUEST_TOKEN))
+        when(bookingService.confirmBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new InvalidBookingRequestException("Only pending bookings can be confirmed"));
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
@@ -327,7 +333,8 @@ class BookingControllerApiContractTest {
                 null,
                 GUEST_TOKEN);
 
-        when(bookingService.cancelBooking(100L, GUEST_TOKEN)).thenReturn(response);
+        when(bookingService.cancelBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
+                .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
                         .header("X-Guest-Booking-Token", GUEST_TOKEN)
@@ -340,14 +347,14 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        verify(bookingService).cancelBooking(100L, GUEST_TOKEN);
+        verify(bookingService).cancelBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class));
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
-        when(bookingService.cancelBooking(999L, GUEST_TOKEN))
+        when(bookingService.cancelBooking(eq(999L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 999L)
@@ -365,7 +372,7 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsBadRequestWhenBookingCannotBeCancelled() throws Exception {
 
-        when(bookingService.cancelBooking(100L, GUEST_TOKEN))
+        when(bookingService.cancelBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new InvalidBookingRequestException("Booking is already cancelled"));
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
@@ -398,7 +405,8 @@ class BookingControllerApiContractTest {
                 null,
                 GUEST_TOKEN);
 
-        when(bookingService.getBookingById(100L, GUEST_TOKEN)).thenReturn(response);
+        when(bookingService.getBookingById(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
+                .thenReturn(response);
 
         mockMvc.perform(get("/api/v1/bookings/{bookingId}", 100L).header("X-Guest-Booking-Token", GUEST_TOKEN))
                 .andExpect(status().isOk())
@@ -410,14 +418,14 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.ticketQuantity").value(2))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        verify(bookingService).getBookingById(100L, GUEST_TOKEN);
+        verify(bookingService).getBookingById(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class));
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void getBookingByIdReturnsNotFoundWhenBookingDoesNotExist() throws Exception {
 
-        when(bookingService.getBookingById(999L, GUEST_TOKEN))
+        when(bookingService.getBookingById(eq(999L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new BookingNotFoundException("Booking not found with ID: 999"));
 
         mockMvc.perform(get("/api/v1/bookings/{bookingId}", 999L).header("X-Guest-Booking-Token", GUEST_TOKEN))
@@ -433,7 +441,7 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void confirmBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
 
-        when(bookingService.confirmBooking(100L, GUEST_TOKEN))
+        when(bookingService.confirmBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
@@ -451,7 +459,7 @@ class BookingControllerApiContractTest {
     @WithMockUser(roles = "USER")
     void cancelBookingReturnsConflictWhenConcurrentUpdateHappens() throws Exception {
 
-        when(bookingService.cancelBooking(100L, GUEST_TOKEN))
+        when(bookingService.cancelBooking(eq(100L), eq(GUEST_TOKEN), any(BookingAccessContext.class)))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Booking.class, 100L));
 
         mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
@@ -463,5 +471,185 @@ class BookingControllerApiContractTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.detail").value("The resource was changed by another request. Please try again."))
                 .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/cancel"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void confirmBookingReturnsBadRequestWhenGuestTokenIsInvalid() throws Exception {
+
+        when(bookingService.confirmBooking(eq(100L), eq("wrong-token"), any(BookingAccessContext.class)))
+                .thenThrow(new InvalidBookingRequestException("Guest booking token is invalid"));
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .header("X-Guest-Booking-Token", "wrong-token")
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Invalid booking request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Guest booking token is invalid"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/bookings/100/confirm"));
+
+        verify(bookingService).confirmBooking(eq(100L), eq("wrong-token"), any(BookingAccessContext.class));
+    }
+
+    @Test
+    void authenticatedCustomerCanConfirmBookingWithoutGuestToken() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingService.confirmBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(42L).equals(context.userId()) && !context.admin())))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 42L).claim("role", "CUSTOMER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        verify(bookingService)
+                .confirmBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(42L).equals(context.userId()) && !context.admin()));
+    }
+
+    @Test
+    void adminCanConfirmBookingWithoutGuestToken() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CONFIRMED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingService.confirmBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(1L).equals(context.userId()) && context.admin())))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/confirm", 100L)
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 1L).claim("role", "ADMIN")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        verify(bookingService)
+                .confirmBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(1L).equals(context.userId()) && context.admin()));
+    }
+
+    @Test
+    void authenticatedCustomerCanCancelBookingWithoutGuestToken() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingService.cancelBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(42L).equals(context.userId()) && !context.admin())))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 42L).claim("role", "CUSTOMER")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(bookingService)
+                .cancelBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(42L).equals(context.userId()) && !context.admin()));
+    }
+
+    @Test
+    void adminCanCancelBookingWithoutGuestToken() throws Exception {
+
+        BookingResDto response = new BookingResDto(
+                100L,
+                null,
+                "Ada",
+                "Lovelace",
+                "ada@example.com",
+                null,
+                null,
+                2,
+                new BigDecimal("3500.00"),
+                new BigDecimal("7000.00"),
+                BookingStatus.CANCELLED,
+                null,
+                GUEST_TOKEN);
+
+        when(bookingService.cancelBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(1L).equals(context.userId()) && context.admin())))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/bookings/{bookingId}/cancel", 100L)
+                        .with(jwt().jwt(jwt -> jwt.claim("userId", 1L).claim("role", "ADMIN")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(bookingService)
+                .cancelBooking(
+                        eq(100L),
+                        eq((String) null),
+                        argThat(context ->
+                                context != null && Long.valueOf(1L).equals(context.userId()) && context.admin()));
     }
 }

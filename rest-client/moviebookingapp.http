@@ -1,0 +1,303 @@
+@baseUrl = http://localhost:8080
+@json = application/json
+
+# Change this before rerunning a full seed flow against the same database.
+@runSuffix = 001
+
+# Match these with your app.admin config/env.
+@adminUsername = admin
+@adminPassword = Admin123
+
+@customerPassword = Password1
+
+@otherCustomerPassword = Password1
+
+@showStartTime = 2027-02-15T18:00:00+01:00
+@showEndTime = 2027-02-15T20:20:00+01:00
+
+### Auth - login seeded admin
+# @name loginAdmin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "{{adminUsername}}",
+  "password": "{{adminPassword}}"
+}
+
+### Auth - register primary customer
+# If this returns 409 on rerun, send the next login request instead.
+# @name registerCustomer
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{json}}
+
+{
+  "username": "ada.customer{{runSuffix}}",
+  "email": "ada.customer+{{runSuffix}}@example.com",
+  "phoneNumber": "+2348012345678",
+  "password": "{{customerPassword}}"
+}
+
+### Auth - login primary customer
+# @name loginCustomer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "ada.customer{{runSuffix}}",
+  "password": "{{customerPassword}}"
+}
+
+### Auth - register another customer for forbidden ownership checks
+# If this returns 409 on rerun, send the next login request instead.
+# @name registerOtherCustomer
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{json}}
+
+{
+  "username": "bayo.customer{{runSuffix}}",
+  "email": "bayo.customer+{{runSuffix}}@example.com",
+  "phoneNumber": "+2348012345679",
+  "password": "{{otherCustomerPassword}}"
+}
+
+### Auth - login another customer
+# @name loginOtherCustomer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "bayo.customer{{runSuffix}}",
+  "password": "{{otherCustomerPassword}}"
+}
+
+### Movies - create movie as admin
+# @name createMovie
+POST {{baseUrl}}/api/v1/movies
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "title": "Codex Drift {{runSuffix}}",
+  "description": "A test movie used for manual API verification.",
+  "genre": "SCI_FI",
+  "durationInMinutes": 140,
+  "releaseDate": "2027-01-10",
+  "language": "ENGLISH",
+  "rating": "PG_13",
+  "movieStatus": "NOW_SHOWING",
+  "posterUrl": "https://example.com/posters/codex-drift.jpg"
+}
+
+### Movies - update movie as admin
+# @name updateMovie
+PUT {{baseUrl}}/api/v1/movies/{{createMovie.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "title": "Codex Drift {{runSuffix}} Updated",
+  "description": "Updated manual API verification movie.",
+  "genre": "SCI_FI",
+  "durationInMinutes": 142,
+  "releaseDate": "2027-01-10",
+  "language": "ENGLISH",
+  "rating": "PG_13",
+  "movieStatus": "NOW_SHOWING",
+  "posterUrl": "https://example.com/posters/codex-drift-updated.jpg"
+}
+
+### Movies - list public movies
+GET {{baseUrl}}/api/v1/movies
+
+### Movies - search public movies
+GET {{baseUrl}}/api/v1/movies?title=Codex&genre=SCI_FI&language=ENGLISH&status=NOW_SHOWING
+
+### Movies - get movie by id
+GET {{baseUrl}}/api/v1/movies/{{createMovie.response.body.$.id}}
+
+### Cinemas - create cinema as admin
+# @name createCinema
+POST {{baseUrl}}/api/v1/cinemas
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "name": "Nova Lekki {{runSuffix}}",
+  "address": "12 Admiralty Way",
+  "city": "Lagos"
+}
+
+### Cinemas - update cinema as admin
+# @name updateCinema
+PUT {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "name": "Nova Lekki {{runSuffix}} Updated",
+  "address": "14 Admiralty Way",
+  "city": "Lagos"
+}
+
+### Cinemas - list public cinemas
+GET {{baseUrl}}/api/v1/cinemas
+
+### Cinemas - get cinema by id
+GET {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}
+
+### Auditoriums - create auditorium as admin
+# @name createAuditorium
+POST {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}/auditoriums
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "name": "Screen 1 {{runSuffix}}",
+  "type": "IMAX",
+  "capacity": 120
+}
+
+### Auditoriums - update auditorium as admin
+# @name updateAuditorium
+PUT {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}/auditoriums/{{createAuditorium.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "name": "Screen 1 {{runSuffix}} Updated",
+  "type": "IMAX",
+  "capacity": 130
+}
+
+### Auditoriums - list public auditoriums for cinema
+GET {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}/auditoriums
+
+### Auditoriums - get auditorium by id
+GET {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}/auditoriums/{{createAuditorium.response.body.$.id}}
+
+### Shows - create show as admin
+# @name createShow
+POST {{baseUrl}}/api/v1/shows
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "movieId": {{createMovie.response.body.$.id}},
+  "auditoriumId": {{createAuditorium.response.body.$.id}},
+  "startTime": "{{showStartTime}}",
+  "endTime": "{{showEndTime}}",
+  "pricePerTicket": 4500.00
+}
+
+### Shows - update show as admin before bookings exist
+# @name updateShow
+PUT {{baseUrl}}/api/v1/shows/{{createShow.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "movieId": {{createMovie.response.body.$.id}},
+  "auditoriumId": {{createAuditorium.response.body.$.id}},
+  "startTime": "{{showStartTime}}",
+  "endTime": "{{showEndTime}}",
+  "pricePerTicket": 5000.00
+}
+
+### Shows - list public shows
+GET {{baseUrl}}/api/v1/shows
+
+### Shows - search public shows
+GET {{baseUrl}}/api/v1/shows?movieId={{createMovie.response.body.$.id}}&movieTitle=Codex&cinemaId={{createCinema.response.body.$.id}}&cinemaName=Nova&city=Lagos&auditoriumId={{createAuditorium.response.body.$.id}}&date=2027-02-15&status=SCHEDULED
+
+### Shows - get show by id
+GET {{baseUrl}}/api/v1/shows/{{createShow.response.body.$.id}}
+
+### Bookings - create guest booking
+# @name createGuestBooking
+POST {{baseUrl}}/api/v1/bookings
+Content-Type: {{json}}
+
+{
+  "userId": 999,
+  "showId": {{createShow.response.body.$.id}},
+  "firstName": "Guest",
+  "lastName": "Customer",
+  "email": "guest.customer+{{runSuffix}}@example.com",
+  "phoneNumber": "+2348011112222",
+  "ticketQuantity": 2
+}
+
+### Bookings - guest can view booking with guest token
+GET {{baseUrl}}/api/v1/bookings/{{createGuestBooking.response.body.$.id}}
+X-Guest-Booking-Token: {{createGuestBooking.response.body.$.guestAccessToken}}
+
+### Bookings - guest can confirm booking with guest token
+# @name confirmGuestBooking
+POST {{baseUrl}}/api/v1/bookings/{{createGuestBooking.response.body.$.id}}/confirm
+X-Guest-Booking-Token: {{createGuestBooking.response.body.$.guestAccessToken}}
+
+### Bookings - guest can cancel confirmed booking with guest token
+# @name cancelGuestBooking
+POST {{baseUrl}}/api/v1/bookings/{{createGuestBooking.response.body.$.id}}/cancel
+X-Guest-Booking-Token: {{createGuestBooking.response.body.$.guestAccessToken}}
+
+### Bookings - create authenticated customer booking
+# Request body userId should be ignored and replaced by JWT userId.
+# @name createCustomerBooking
+POST {{baseUrl}}/api/v1/bookings
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "userId": 999,
+  "showId": {{createShow.response.body.$.id}},
+  "firstName": "Ada",
+  "lastName": "Customer",
+  "email": "ada.customer+{{runSuffix}}@example.com",
+  "phoneNumber": "+2348022223333",
+  "ticketQuantity": 1
+}
+
+### Bookings - customer can view own booking
+GET {{baseUrl}}/api/v1/bookings/{{createCustomerBooking.response.body.$.id}}
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+
+### Bookings - another customer cannot view this booking
+GET {{baseUrl}}/api/v1/bookings/{{createCustomerBooking.response.body.$.id}}
+Authorization: Bearer {{loginOtherCustomer.response.body.$.accessToken}}
+
+### Bookings - admin can view any booking
+GET {{baseUrl}}/api/v1/bookings/{{createCustomerBooking.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Bookings - customer can confirm own booking
+# @name confirmCustomerBooking
+POST {{baseUrl}}/api/v1/bookings/{{createCustomerBooking.response.body.$.id}}/confirm
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+
+### Bookings - customer can cancel confirmed own booking
+# @name cancelCustomerBooking
+POST {{baseUrl}}/api/v1/bookings/{{createCustomerBooking.response.body.$.id}}/cancel
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+
+### Auth - logout customer
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+
+### Cleanup - delete show as admin
+# Send after bookings above are cancelled. If this fails, inspect active bookings first.
+DELETE {{baseUrl}}/api/v1/shows/{{createShow.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Cleanup - delete auditorium as admin
+DELETE {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}/auditoriums/{{createAuditorium.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Cleanup - delete cinema as admin
+DELETE {{baseUrl}}/api/v1/cinemas/{{createCinema.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### Cleanup - delete movie as admin
+DELETE {{baseUrl}}/api/v1/movies/{{createMovie.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

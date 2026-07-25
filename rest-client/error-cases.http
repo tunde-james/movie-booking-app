@@ -1,0 +1,168 @@
+@baseUrl = http://localhost:8080
+@json = application/json
+
+@adminUsername = admin
+@adminPassword = Admin123
+@customerUsername = ada.errorcase
+@customerEmail = ada.errorcase@example.com
+@customerPassword = Password1
+
+### Auth - login admin for protected endpoint checks
+# @name loginAdmin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "{{adminUsername}}",
+  "password": "{{adminPassword}}"
+}
+
+### Auth - register customer for forbidden checks
+# @name registerCustomer
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{json}}
+
+{
+  "username": "{{customerUsername}}",
+  "email": "{{customerEmail}}",
+  "phoneNumber": "+2348033334444",
+  "password": "{{customerPassword}}"
+}
+
+### Auth - login customer for forbidden checks
+# @name loginCustomer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "{{customerUsername}}",
+  "password": "{{customerPassword}}"
+}
+
+### Auth error - login validation failure
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "",
+  "password": ""
+}
+
+### Auth error - bad credentials
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{json}}
+
+{
+  "usernameOrEmail": "missing-user",
+  "password": "WrongPassword1"
+}
+
+### Auth error - logout without authentication
+POST {{baseUrl}}/api/v1/auth/logout
+
+### Auth error - logout with malformed token
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer not-a-real-token
+
+### Movie error - admin endpoint without token
+POST {{baseUrl}}/api/v1/movies
+Content-Type: {{json}}
+
+{
+  "title": "Unauthorized Movie",
+  "description": "This should be rejected before controller logic.",
+  "genre": "DRAMA",
+  "durationInMinutes": 100,
+  "releaseDate": "2027-04-10",
+  "language": "ENGLISH",
+  "rating": "PG",
+  "movieStatus": "NOW_SHOWING",
+  "posterUrl": "https://example.com/posters/unauthorized.jpg"
+}
+
+### Movie error - admin endpoint with customer token should be forbidden
+POST {{baseUrl}}/api/v1/movies
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "title": "Forbidden Movie",
+  "description": "This should be rejected because customer is not admin.",
+  "genre": "DRAMA",
+  "durationInMinutes": 100,
+  "releaseDate": "2027-04-10",
+  "language": "ENGLISH",
+  "rating": "PG",
+  "movieStatus": "NOW_SHOWING",
+  "posterUrl": "https://example.com/posters/forbidden.jpg"
+}
+
+### Movie error - validation failure
+POST {{baseUrl}}/api/v1/movies
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "title": "",
+  "description": "Invalid movie body.",
+  "genre": null,
+  "durationInMinutes": 0,
+  "releaseDate": "2020-01-01",
+  "language": null,
+  "rating": null,
+  "movieStatus": null,
+  "posterUrl": "https://example.com/posters/invalid.jpg"
+}
+
+### Cinema error - validation failure
+POST {{baseUrl}}/api/v1/cinemas
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "name": "",
+  "address": "",
+  "city": ""
+}
+
+### Auditorium error - missing cinema
+POST {{baseUrl}}/api/v1/cinemas/999999/auditoriums
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "name": "Missing Cinema Screen",
+  "type": "STANDARD",
+  "capacity": 100
+}
+
+### Show error - missing movie and auditorium ids
+POST {{baseUrl}}/api/v1/shows
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: {{json}}
+
+{
+  "movieId": 999999,
+  "auditoriumId": 999999,
+  "startTime": "2027-05-01T18:00:00+01:00",
+  "endTime": "2027-05-01T20:00:00+01:00",
+  "pricePerTicket": 5000.00
+}
+
+### Booking error - invalid request body
+POST {{baseUrl}}/api/v1/bookings
+Content-Type: {{json}}
+
+{
+  "userId": -1,
+  "showId": null,
+  "firstName": "",
+  "lastName": "",
+  "email": "not-an-email",
+  "phoneNumber": "123456789012345678901",
+  "ticketQuantity": 11
+}
+
+### Booking error - missing guest token for guest-only access path
+# Replace 1 with a real guest booking id. Expect forbidden or invalid request depending on booking state.
+GET {{baseUrl}}/api/v1/bookings/1

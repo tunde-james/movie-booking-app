@@ -23,3 +23,16 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:moviebookingapp}
+    expires-in: ${JWT_EXPIRES_IN:1h}
+
+  admin:
+    username: ${ADMIN_USERNAME:admin}
+    email: ${ADMIN_EMAIL:admin@moviebookingapp.com}
+    password: ${ADMIN_PASSWORD:}
+
+  

@@ -7,9 +7,11 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @Testcontainers
+@ActiveProfiles("test")
 class MoviebookingappApplicationTests {
 
 	@Container
